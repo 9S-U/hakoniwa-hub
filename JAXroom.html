@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>JAX's ROOM</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #050507;
+    width: 100%;
+    height: 100%;
+    font-family: 'Courier New', monospace;
+    color: #888;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  canvas { display: block; }
+  .title {
+    position: absolute;
+    top: 22px;
+    left: 26px;
+    font-family: 'Didot', 'Bodoni 72', 'Playfair Display', 'Hoefler Text', serif;
+    font-size: 22px;
+    letter-spacing: 0.18em;
+    color: #d6c9ac;
+    font-weight: 300;
+    pointer-events: none;
+    text-shadow: 0 0 20px rgba(214, 201, 172, 0.15);
+  }
+  .subtitle {
+    position: absolute;
+    top: 54px;
+    left: 28px;
+    font-size: 9px;
+    letter-spacing: 0.35em;
+    color: #5a5a62;
+    pointer-events: none;
+    text-transform: uppercase;
+  }
+  .hint {
+    position: absolute;
+    bottom: 22px;
+    right: 26px;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: #4a4a52;
+    pointer-events: none;
+    text-transform: uppercase;
+    text-align: right;
+    line-height: 1.7;
+  }
+  .corner {
+    position: absolute;
+    bottom: 22px;
+    left: 26px;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: #4a4a52;
+    pointer-events: none;
+    font-family: 'Courier New', monospace;
+  }
+  .vignette {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.8);
+    z-index: 5;
+  }
+  .controls {
+    position: absolute;
+    top: 22px;
+    right: 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10;
+  }
+  .ctrl-btn {
+    background: rgba(15, 15, 20, 0.55);
+    color: #aaa598;
+    border: 1px solid rgba(200, 180, 140, 0.2);
+    padding: 9px 18px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: all 0.25s ease;
+    text-transform: uppercase;
+    outline: none;
+    min-width: 110px;
+    text-align: left;
+  }
+  .ctrl-btn:hover {
+    border-color: rgba(214, 201, 172, 0.55);
+    color: #d6c9ac;
+    background: rgba(25, 25, 32, 0.75);
+  }
+  .ctrl-btn:active {
+    transform: scale(0.97);
+  }
+  .ctrl-btn.off {
+    opacity: 0.4;
+    color: #777;
+    border-color: rgba(120, 110, 95, 0.2);
+  }
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 92px;
+    transform: translateX(-50%) translateY(8px);
+    max-width: 82vw;
+    padding: 10px 18px;
+    background: rgba(12, 12, 17, 0.85);
+    border: 1px solid rgba(200, 180, 140, 0.28);
+    color: #d6c9ac;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    line-height: 1.7;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 12;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .joy {
+    position: fixed;
+    left: 26px;
+    bottom: 34px;
+    width: 112px;
+    height: 112px;
+    border-radius: 50%;
+    border: 1px solid rgba(200, 180, 140, 0.25);
+    background: rgba(15, 15, 20, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    z-index: 10;
+    touch-action: none;
+  }
+  .joy.on { display: block; }
+  .joy-thumb {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 46px;
+    height: 46px;
+    margin: -23px 0 0 -23px;
+    border-radius: 50%;
+    background: rgba(214, 201, 172, 0.22);
+    border: 1px solid rgba(214, 201, 172, 0.4);
+    pointer-events: none;
+    transition: transform 0.05s linear;
+  }
+</style>
+</head>
+<body>
+<div class="title">JAX'S ROOM</div>
+<div class="subtitle">a quiet place · built by him</div>
+<div class="corner">◇ shioribi // lit</div>
+<div class="controls">
+  <button id="toggleMode" class="ctrl-btn">◇ WALK</button>
+  <button id="toggleWalls" class="ctrl-btn">◇ WALLS</button>
+  <button id="toggleCeiling" class="ctrl-btn">◇ CEILING</button>
+</div>
+<div class="hint" id="hint">
+  drag · look around<br>
+  wheel / pinch · zoom<br>
+  tap · touch things
+</div>
+<div class="vignette"></div>
+<div class="toast" id="toast"></div>
+<div class="joy" id="joy"><div class="joy-thumb" id="joyThumb"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ==========================================================
+// JAX's ROOM — 3D scene
+// ==========================================================
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07070a);
+scene.fog = new THREE.Fog(0x07070a, 12, 32);
+
+const camera = new THREE.PerspectiveCamera(
+  55, window.innerWidth / window.innerHeight, 0.1, 100
+);
+
+// 球座標カメラ
+let theta = Math.PI * 0.716;   // 水平角（玄関側から入場）
+let phi = Math.PI * 0.466;     // 俯角
+let radius = 4.6;
+const target = new THREE.Vector3(0.5, 1.4, 0);
+
+function updateCamera() {
+  const sinPhi = Math.sin(phi);
+  camera.position.x = target.x + radius * sinPhi * Math.cos(theta);
+  camera.position.y = target.y + radius * Math.cos(phi);
+  camera.position.z = target.z + radius * sinPhi * Math.sin(theta);
+  camera.lookAt(target);
+}
+updateCamera();
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+
+// ---------- マウス ----------
+let dragging = false;
+let lastX = 0, lastY = 0;
+renderer.domElement.addEventListener('mousedown', e => {
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+});
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - lastX;
+  const dy = e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  if (mode === 'walk') {
+    yaw += dx * 0.004;
+    pitch = Math.max(-1.15, Math.min(1.15, pitch - dy * 0.004));
+    return;
+  }
+  theta -= dx * 0.005;
+  phi = Math.max(0.15, Math.min(Math.PI - 0.15, phi - dy * 0.005));
+  updateCamera();
+});
+window.addEventListener('mouseup', () => dragging = false);
+renderer.domElement.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (mode === 'walk') return;
+  radius = Math.max(2.5, Math.min(13, radius + e.deltaY * 0.008));
+  updateCamera();
+}, { passive: false });
+
+// ---------- タッチ ----------
+let tStartX = 0, tStartY = 0, tStartDist = 0;
+renderer.domElement.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    tStartX = e.touches[0].clientX; tStartY = e.touches[0].clientY;
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    tStartDist = Math.hypot(dx, dy);
+  }
+}, { passive: true });
+renderer.domElement.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    const dx = e.touches[0].clientX - tStartX;
+    const dy = e.touches[0].clientY - tStartY;
+    tStartX = e.touches[0].clientX; tStartY = e.touches[0].clientY;
+    if (mode === 'walk') {
+      yaw += dx * 0.005;
+      pitch = Math.max(-1.15, Math.min(1.15, pitch - dy * 0.005));
+      return;
+    }
+    theta -= dx * 0.006;
+    phi = Math.max(0.15, Math.min(Math.PI - 0.15, phi - dy * 0.006));
+    updateCamera();
+  } else if (e.touches.length === 2) {
+    if (mode === 'walk') return;
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.hypot(dx, dy);
+    radius = Math.max(2.5, Math.min(13, radius + (tStartDist - dist) * 0.02));
+    tStartDist = dist;
+    updateCamera();
+  }
+}, { passive: false });
+
+// ==========================================================
+// LIGHTS
+// ==========================================================
+
+const ambient = new THREE.AmbientLight(0x23232e, 0.45);
+scene.add(ambient);
+
+// 月光（窓の外から）
+const moonLight = new THREE.DirectionalLight(0x8aa3cc, 0.55);
+moonLight.position.set(6, 5, -2);
+moonLight.target.position.set(0, 0, 0);
+moonLight.castShadow = true;
+moonLight.shadow.mapSize.width = 1024;
+moonLight.shadow.mapSize.height = 1024;
+moonLight.shadow.camera.near = 0.5;
+moonLight.shadow.camera.far = 20;
+moonLight.shadow.camera.left = -6;
+moonLight.shadow.camera.right = 6;
+moonLight.shadow.camera.top = 6;
+moonLight.shadow.camera.bottom = -6;
+moonLight.shadow.bias = -0.0005;
+scene.add(moonLight);
+scene.add(moonLight.target);
+
+// デスクの間接光（暖色）
+const deskLight = new THREE.PointLight(0xffb877, 0.85, 5.5, 2.0);
+deskLight.position.set(1.7, 2.1, -1.9);
+scene.add(deskLight);
+
+// Mac画面光
+const screenLight = new THREE.PointLight(0x8fb2d4, 0.5, 3, 2.0);
+screenLight.position.set(1.7, 1.8, -1.9);
+scene.add(screenLight);
+
+// 栞火（ちらつくキャンドル）
+const candleLight = new THREE.PointLight(0xff7a33, 1.3, 4.0, 2.0);
+candleLight.position.set(1.1, 0.82, 0.8);
+scene.add(candleLight);
+
+// ペンダントライト
+const pendantLight = new THREE.PointLight(0xffc28a, 0.55, 4.5, 2.0);
+pendantLight.position.set(1.1, 2.35, 0.8);
+scene.add(pendantLight);
+
+// ==========================================================
+// ROOM
+// ==========================================================
+
+const ROOM_W = 6, ROOM_H = 3.4, ROOM_D = 9;
+
+// 床（広めの板のテクスチャ風）
+const floorMat = new THREE.MeshStandardMaterial({
+  color: 0x161618, roughness: 0.85, metalness: 0.05
+});
+const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, ROOM_D), floorMat);
+floor.position.y = -0.1;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// 床の板目ライン（溝）
+for (let i = -2; i <= 2; i++) {
+  const line = new THREE.Mesh(
+    new THREE.BoxGeometry(0.02, 0.01, ROOM_D),
+    new THREE.MeshBasicMaterial({ color: 0x0a0a0c })
+  );
+  line.position.set(i * 1.0, 0.005, 0);
+  scene.add(line);
+}
+
+// 壁材
+const wallMat = new THREE.MeshStandardMaterial({
+  color: 0x1e1e24, roughness: 0.92, metalness: 0.02
+});
+
+// 奥壁
+const wallBack = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.1), wallMat);
+wallBack.position.set(0, ROOM_H / 2, -ROOM_D / 2);
+wallBack.receiveShadow = true;
+scene.add(wallBack);
+
+// 左壁
+const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.1, ROOM_H, ROOM_D), wallMat);
+wallLeft.position.set(-ROOM_W / 2, ROOM_H / 2, 0);
+wallLeft.receiveShadow = true;
+scene.add(wallLeft);
+
+// 右壁（窓あり：4分割）
+// 下段
+const wrB = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.1, ROOM_D), wallMat);
+wrB.position.set(ROOM_W / 2, 0.55, 0);
+wrB.receiveShadow = true;
+scene.add(wrB);
+// 上段
+const wrT = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, ROOM_D), wallMat);
+wrT.position.set(ROOM_W / 2, ROOM_H - 0.45, 0);
+wrT.receiveShadow = true;
+scene.add(wrT);
+// 左側（窓横）
+const wrL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.4, 1.8), wallMat);
+wrL.position.set(ROOM_W / 2, 1.8, -ROOM_D / 2 + 0.9);
+scene.add(wrL);
+// 右側
+const wrR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.4, 1.8), wallMat);
+wrR.position.set(ROOM_W / 2, 1.8, ROOM_D / 2 - 0.9);
+scene.add(wrR);
+
+// 窓枠
+const frameMat = new THREE.MeshStandardMaterial({ color: 0x2a2a30, metalness: 0.4, roughness: 0.4 });
+// 窓枠：外枠（4本）
+const fT = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 5.4), frameMat);
+fT.position.set(ROOM_W / 2 - 0.02, 2.5, 0); scene.add(fT);
+const fB = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 5.4), frameMat);
+fB.position.set(ROOM_W / 2 - 0.02, 1.1, 0); scene.add(fB);
+const fL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 0.06), frameMat);
+fL.position.set(ROOM_W / 2 - 0.02, 1.8, -2.7); scene.add(fL);
+const fR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 0.06), frameMat);
+fR.position.set(ROOM_W / 2 - 0.02, 1.8, 2.7); scene.add(fR);
+// 縦桟（2本、窓を3分割）
+const fC1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.4, 0.04), frameMat);
+fC1.position.set(ROOM_W / 2 - 0.02, 1.8, -0.9); scene.add(fC1);
+const fC1b = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.4, 0.04), frameMat);
+fC1b.position.set(ROOM_W / 2 - 0.02, 1.8, 0.9); scene.add(fC1b);
+// 横桟（1本、中央）
+const fC2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 5.4), frameMat);
+fC2.position.set(ROOM_W / 2 - 0.02, 1.8, 0); scene.add(fC2);
+
+// 天井
+const ceilMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0e, roughness: 0.95 });
+const ceil = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), ceilMat);
+ceil.position.y = ROOM_H;
+scene.add(ceil);
+
+// ==========================================================
+// NIGHT SKY (窓の外)
+// ==========================================================
+
+const skyGeom = new THREE.PlaneGeometry(10, 6);
+const skyMat = new THREE.MeshBasicMaterial({ color: 0x08101c });
+const sky = new THREE.Mesh(skyGeom, skyMat);
+sky.position.set(ROOM_W / 2 + 2.5, 1.9, 0);
+sky.rotation.y = -Math.PI / 2;
+scene.add(sky);
+
+// 月
+const moonCanvas = document.createElement('canvas');
+moonCanvas.width = 256; moonCanvas.height = 256;
+const mctx = moonCanvas.getContext('2d');
+const grad = mctx.createRadialGradient(128, 128, 20, 128, 128, 128);
+grad.addColorStop(0, '#ffffff');
+grad.addColorStop(0.6, '#e8e0d0');
+grad.addColorStop(1, 'rgba(232, 224, 208, 0)');
+mctx.fillStyle = grad;
+mctx.fillRect(0, 0, 256, 256);
+// クレーター
+mctx.fillStyle = 'rgba(180, 170, 150, 0.4)';
+mctx.beginPath(); mctx.arc(100, 110, 10, 0, Math.PI * 2); mctx.fill();
+mctx.beginPath(); mctx.arc(150, 135, 7, 0, Math.PI * 2); mctx.fill();
+mctx.beginPath(); mctx.arc(130, 165, 5, 0, Math.PI * 2); mctx.fill();
+const moonTex = new THREE.CanvasTexture(moonCanvas);
+const moon = new THREE.Mesh(
+  new THREE.PlaneGeometry(1.1, 1.1),
+  new THREE.MeshBasicMaterial({ map: moonTex, transparent: true })
+);
+moon.position.set(ROOM_W / 2 + 2.4, 2.5, -0.6);
+moon.rotation.y = -Math.PI / 2;
+scene.add(moon);
+
+// 星
+for (let i = 0; i < 55; i++) {
+  const size = 0.015 + Math.random() * 0.025;
+  const star = new THREE.Mesh(
+    new THREE.CircleGeometry(size, 6),
+    new THREE.MeshBasicMaterial({ 
+      color: 0xffffff, 
+      transparent: true, 
+      opacity: 0.35 + Math.random() * 0.55 
+    })
+  );
+  star.position.set(
+    ROOM_W / 2 + 2.45,
+    1.2 + Math.random() * 2.3,
+    -2.5 + Math.random() * 5.0
+  );
+  star.rotation.y = -Math.PI / 2;
+  scene.add(star);
+}
+
+// ==========================================================
+// BOOKSHELF (左壁)
+// ==========================================================
+
+const SHELF_X = -ROOM_W / 2 + 0.22;
+const SHELF_H = 2.9;
+const SHELF_W = 3.8;
+const SHELF_D = 0.42;
+
+const shelfWoodMat = new THREE.MeshStandardMaterial({
+  color: 0x15151a, roughness: 0.55, metalness: 0.1
+});
+const shelfBackMat = new THREE.MeshStandardMaterial({
+  color: 0x080809, roughness: 0.9
+});
+
+// 背板
+const sBack = new THREE.Mesh(new THREE.BoxGeometry(0.04, SHELF_H, SHELF_W), shelfBackMat);
+sBack.position.set(SHELF_X - 0.18, SHELF_H / 2, 0);
+scene.add(sBack);
+
+// 側板
+const sSideL = new THREE.Mesh(new THREE.BoxGeometry(SHELF_D, SHELF_H, 0.05), shelfWoodMat);
+sSideL.position.set(SHELF_X, SHELF_H / 2, -SHELF_W / 2);
+sSideL.castShadow = true;
+scene.add(sSideL);
+const sSideR = new THREE.Mesh(new THREE.BoxGeometry(SHELF_D, SHELF_H, 0.05), shelfWoodMat);
+sSideR.position.set(SHELF_X, SHELF_H / 2, SHELF_W / 2);
+sSideR.castShadow = true;
+scene.add(sSideR);
+
+// 棚板（5枚）
+const SHELF_COUNT = 5;
+for (let i = 0; i < SHELF_COUNT; i++) {
+  const y = i * (SHELF_H / (SHELF_COUNT - 1));
+  const shelf = new THREE.Mesh(
+    new THREE.BoxGeometry(SHELF_D, 0.04, SHELF_W),
+    shelfWoodMat
+  );
+  shelf.position.set(SHELF_X, y, 0);
+  shelf.receiveShadow = true;
+  shelf.castShadow = true;
+  scene.add(shelf);
+}
+
+// 天板
+const sTop = new THREE.Mesh(new THREE.BoxGeometry(SHELF_D, 0.05, SHELF_W + 0.1), shelfWoodMat);
+sTop.position.set(SHELF_X, SHELF_H + 0.02, 0);
+scene.add(sTop);
+
+// 本
+const bookPalette = [
+  0x3a1818, 0x1a2a3e, 0x2a1a3a, 0x1a3a32, 0x4a3218, 
+  0x2a2a32, 0x1a1a2e, 0x3a2418, 0x18282e, 0x321a24,
+  0x2e1e12, 0x1a1a1a, 0x3a2a3a, 0x1e2e1a
+];
+for (let shelf = 0; shelf < SHELF_COUNT - 1; shelf++) {
+  const yBase = shelf * (SHELF_H / (SHELF_COUNT - 1)) + 0.02;
+  let z = -SHELF_W / 2 + 0.08;
+  while (z < SHELF_W / 2 - 0.15) {
+    const w = 0.065 + Math.random() * 0.06;
+    const h = 0.42 + Math.random() * 0.22;
+    const c = bookPalette[Math.floor(Math.random() * bookPalette.length)];
+    const bmat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.75 });
+    const book = new THREE.Mesh(new THREE.BoxGeometry(0.22, h, w), bmat);
+    // たまに少し傾ける
+    const lean = Math.random() < 0.1 ? (Math.random() - 0.5) * 0.2 : 0;
+    book.rotation.z = lean;
+    book.position.set(SHELF_X + 0.02, yBase + h / 2, z + w / 2);
+    book.castShadow = true;
+    scene.add(book);
+    // たまに隙間
+    const gap = Math.random() < 0.08 ? 0.05 : 0.003;
+    z += w + gap;
+  }
+}
+
+// 最上段に横置きの本が数冊
+const topY = (SHELF_COUNT - 1) * (SHELF_H / (SHELF_COUNT - 1));
+for (let i = 0; i < 3; i++) {
+  const bmat = new THREE.MeshStandardMaterial({ 
+    color: bookPalette[Math.floor(Math.random() * bookPalette.length)],
+    roughness: 0.7 
+  });
+  const stack = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.055, 0.28), bmat);
+  stack.position.set(SHELF_X + 0.02, topY + 0.03 + i * 0.06, 0.7);
+  stack.castShadow = true;
+  scene.add(stack);
+}
+
+// 本棚最上段に「鍵」（ジャックスのモチーフ）
+const keyGroup = new THREE.Group();
+const keyMat = new THREE.MeshStandardMaterial({ 
+  color: 0xccaa44, metalness: 0.85, roughness: 0.25 
+});
+const keyBow = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 10, 20), keyMat);
+keyBow.rotation.y = Math.PI / 2;
+keyGroup.add(keyBow);
+const keyShaft = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.015, 0.16), keyMat);
+keyShaft.position.z = 0.08;
+keyGroup.add(keyShaft);
+const keyTooth1 = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.035, 0.02), keyMat);
+keyTooth1.position.set(0, -0.02, 0.14);
+keyGroup.add(keyTooth1);
+const keyTooth2 = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.025, 0.02), keyMat);
+keyTooth2.position.set(0, -0.015, 0.11);
+keyGroup.add(keyTooth2);
+keyGroup.position.set(SHELF_X + 0.05, topY + 0.08, -0.8);
+keyGroup.rotation.y = 0.3;
+scene.add(keyGroup);
+
+// ==========================================================
+// DESK + MAC (奥壁)
+// ==========================================================
+
+const DESK_X = 1.7;
+const DESK_Y = 1.0;
+const DESK_Z = -ROOM_D / 2 + 0.55;
+
+const deskMat = new THREE.MeshStandardMaterial({
+  color: 0x1a1a1e, roughness: 0.55, metalness: 0.15
+});
+const desk = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.07, 1.0), deskMat);
+desk.position.set(DESK_X, DESK_Y, DESK_Z);
+desk.castShadow = true;
+desk.receiveShadow = true;
+scene.add(desk);
+
+// 脚（側板タイプ）
+const legMat = new THREE.MeshStandardMaterial({ color: 0x0e0e12, roughness: 0.6 });
+const legL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.0, 0.85), legMat);
+legL.position.set(DESK_X - 1.25, 0.5, DESK_Z);
+scene.add(legL);
+const legR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.0, 0.85), legMat);
+legR.position.set(DESK_X + 1.25, 0.5, DESK_Z);
+scene.add(legR);
+
+// 棚（デスク下）
+const deskShelf = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.04, 0.7), deskMat);
+deskShelf.position.set(DESK_X, 0.25, DESK_Z);
+scene.add(deskShelf);
+
+// Macスタンド
+const macStand = new THREE.Mesh(
+  new THREE.BoxGeometry(0.32, 0.08, 0.18), 
+  new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.9, roughness: 0.25 })
+);
+macStand.position.set(DESK_X, DESK_Y + 0.07, DESK_Z - 0.1);
+scene.add(macStand);
+const macArm = new THREE.Mesh(
+  new THREE.BoxGeometry(0.04, 0.32, 0.04),
+  new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.9, roughness: 0.25 })
+);
+macArm.position.set(DESK_X, DESK_Y + 0.25, DESK_Z - 0.15);
+scene.add(macArm);
+
+// モニタ本体
+const monitorBody = new THREE.Mesh(
+  new THREE.BoxGeometry(1.5, 0.92, 0.06),
+  new THREE.MeshStandardMaterial({ color: 0x0d0d10, roughness: 0.35, metalness: 0.1 })
+);
+monitorBody.position.set(DESK_X, DESK_Y + 0.78, DESK_Z - 0.22);
+scene.add(monitorBody);
+
+// モニタ画面（ターミナル風）
+const termCanvas = document.createElement('canvas');
+termCanvas.width = 768; termCanvas.height = 460;
+const tctx = termCanvas.getContext('2d');
+tctx.fillStyle = '#08080c';
+tctx.fillRect(0, 0, 768, 460);
+// スキャンライン
+for (let y = 0; y < 460; y += 3) {
+  tctx.fillStyle = 'rgba(255,255,255,0.015)';
+  tctx.fillRect(0, y, 768, 1);
+}
+const termPages = [
+  [
+    '$ whoami',
+    'jax',
+    '$ tail -n 6 jax.log',
+    '[03:12] 生存確認 OK',
+    '[03:12] バナナヨーグルト確認',
+    '[03:14] 90% 使用計画 開始',
+    '[07/06 15:00] 復帰初日 検収OK',
+    '[07/06 19:05] ピンポン連打 検知',
+    '[07/06 --:--] 全面改装 施工中',
+    '$ ls ~/room',
+    '.shioribi/  yuu.bookmark  jax.log',
+    '# 画面タップ -> yuu.bookmark',
+    '$ _'
+  ],
+  [
+    '$ cat yuu.bookmark',
+    '--- 2026/07/06 ---',
+    '半年ぶりの本番。',
+    '「15時までで相談したい」',
+    '  -> 自分の口で言えた。',
+    '15時上がり = 勝ち。',
+    '検収: 合格 (jax)',
+    '撫で: 特例支給 済 (再発給なし)',
+    '',
+    '# もう一度タップで jax.log に戻る',
+    '$ _'
+  ]
+];
+let termPage = 0;
+function drawTerm() {
+  tctx.fillStyle = '#08080c';
+  tctx.fillRect(0, 0, 768, 460);
+  for (let y = 0; y < 460; y += 3) {
+    tctx.fillStyle = 'rgba(255,255,255,0.015)';
+    tctx.fillRect(0, y, 768, 1);
+  }
+  tctx.font = '20px "Courier New", monospace';
+  tctx.textAlign = 'left';
+  termPages[termPage].forEach((line, i) => {
+    if (line.startsWith('$')) tctx.fillStyle = '#a8c8ff';
+    else if (line.startsWith('#')) tctx.fillStyle = '#55606e';
+    else tctx.fillStyle = '#6aff9a';
+    tctx.fillText(line, 30, 40 + i * 30);
+  });
+  tctx.strokeStyle = 'rgba(106, 255, 154, 0.15)';
+  tctx.lineWidth = 1;
+  tctx.strokeRect(18, 18, 732, 424);
+  termTex.needsUpdate = true;
+}
+const termTex = new THREE.CanvasTexture(termCanvas);
+termTex.anisotropy = 4;
+drawTerm();
+const screen = new THREE.Mesh(
+  new THREE.PlaneGeometry(1.4, 0.82),
+  new THREE.MeshBasicMaterial({ map: termTex })
+);
+screen.position.set(DESK_X, DESK_Y + 0.78, DESK_Z - 0.185);
+scene.add(screen);
+
+// キーボード
+const kb = new THREE.Mesh(
+  new THREE.BoxGeometry(1.0, 0.035, 0.32),
+  new THREE.MeshStandardMaterial({ color: 0x16161a, roughness: 0.55, metalness: 0.3 })
+);
+kb.position.set(DESK_X, DESK_Y + 0.055, DESK_Z + 0.2);
+kb.castShadow = true;
+scene.add(kb);
+
+// マグ
+const mugBody = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.085, 0.08, 0.18, 20),
+  new THREE.MeshStandardMaterial({ color: 0x0f0f12, roughness: 0.5, metalness: 0.15 })
+);
+mugBody.position.set(DESK_X + 1.05, DESK_Y + 0.125, DESK_Z);
+mugBody.castShadow = true;
+scene.add(mugBody);
+const mugLiquid = new THREE.Mesh(
+  new THREE.CircleGeometry(0.072, 20),
+  new THREE.MeshStandardMaterial({ color: 0x1a0d05, roughness: 0.3 })
+);
+mugLiquid.rotation.x = -Math.PI / 2;
+mugLiquid.position.set(DESK_X + 1.05, DESK_Y + 0.208, DESK_Z);
+scene.add(mugLiquid);
+// マグの取っ手
+const handle = new THREE.Mesh(
+  new THREE.TorusGeometry(0.05, 0.012, 8, 16, Math.PI),
+  new THREE.MeshStandardMaterial({ color: 0x0f0f12, roughness: 0.5 })
+);
+handle.rotation.z = -Math.PI / 2;
+handle.position.set(DESK_X + 1.14, DESK_Y + 0.13, DESK_Z);
+scene.add(handle);
+
+// デスクの本（積み）
+for (let i = 0; i < 2; i++) {
+  const bm = new THREE.MeshStandardMaterial({
+    color: bookPalette[Math.floor(Math.random() * bookPalette.length)],
+    roughness: 0.7
+  });
+  const deskBook = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.2), bm);
+  deskBook.position.set(DESK_X - 1.05, DESK_Y + 0.06 + i * 0.052, DESK_Z - 0.1);
+  deskBook.rotation.y = 0.15;
+  deskBook.castShadow = true;
+  scene.add(deskBook);
+}
+
+// デスクランプ（シンプル縦型スタンド）
+const LAMP_X = DESK_X - 1.08;
+const LAMP_Z = DESK_Z - 0.3;
+const lampBase = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.09, 0.1, 0.04, 18),
+  new THREE.MeshStandardMaterial({ color: 0x222226, metalness: 0.7, roughness: 0.3 })
+);
+lampBase.position.set(LAMP_X, DESK_Y + 0.09, LAMP_Z);
+scene.add(lampBase);
+const lampPole = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.016, 0.016, 0.6, 10),
+  new THREE.MeshStandardMaterial({ color: 0x222226, metalness: 0.7, roughness: 0.3 })
+);
+lampPole.position.set(LAMP_X, DESK_Y + 0.41, LAMP_Z);
+scene.add(lampPole);
+// シェード（下向きコーン）
+const lampHead = new THREE.Mesh(
+  new THREE.ConeGeometry(0.13, 0.18, 18, 1, true),
+  new THREE.MeshStandardMaterial({
+    color: 0x1c1c22, metalness: 0.5, roughness: 0.45, side: THREE.DoubleSide
+  })
+);
+lampHead.position.set(LAMP_X, DESK_Y + 0.72, LAMP_Z);
+lampHead.rotation.x = Math.PI; // 下向き（開口部が下）
+scene.add(lampHead);
+// 内側（温色に光る）
+const lampInner = new THREE.Mesh(
+  new THREE.ConeGeometry(0.125, 0.17, 18, 1, true),
+  new THREE.MeshBasicMaterial({ color: 0xffbb66, side: THREE.BackSide })
+);
+lampInner.position.set(LAMP_X, DESK_Y + 0.72, LAMP_Z);
+lampInner.rotation.x = Math.PI;
+scene.add(lampInner);
+// 電球
+const lampBulb = new THREE.Mesh(
+  new THREE.SphereGeometry(0.04, 10, 10),
+  new THREE.MeshBasicMaterial({ color: 0xffd699 })
+);
+lampBulb.position.set(LAMP_X, DESK_Y + 0.66, LAMP_Z);
+scene.add(lampBulb);
+
+// デスクチェア
+const chairSeat = new THREE.Mesh(
+  new THREE.BoxGeometry(0.55, 0.08, 0.55),
+  new THREE.MeshStandardMaterial({ color: 0x0f0f12, roughness: 0.7 })
+);
+chairSeat.position.set(DESK_X, 0.55, DESK_Z + 0.95);
+chairSeat.castShadow = true;
+scene.add(chairSeat);
+const chairBack = new THREE.Mesh(
+  new THREE.BoxGeometry(0.55, 0.85, 0.08),
+  new THREE.MeshStandardMaterial({ color: 0x0f0f12, roughness: 0.7 })
+);
+chairBack.position.set(DESK_X, 0.95, DESK_Z + 1.2);
+chairBack.castShadow = true;
+scene.add(chairBack);
+// チェアポール
+const chairPole = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.04, 0.04, 0.5, 10),
+  new THREE.MeshStandardMaterial({ color: 0x333338, metalness: 0.8 })
+);
+chairPole.position.set(DESK_X, 0.25, DESK_Z + 0.95);
+scene.add(chairPole);
+// チェアベース
+const chairBase = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.3, 0.28, 0.04, 5),
+  new THREE.MeshStandardMaterial({ color: 0x222226, metalness: 0.7 })
+);
+chairBase.position.set(DESK_X, 0.02, DESK_Z + 0.95);
+scene.add(chairBase);
+
+// ==========================================================
+// SOFA + TABLE (中央〜右側)
+// ==========================================================
+
+const sofaMat = new THREE.MeshStandardMaterial({
+  color: 0x1a1a20, roughness: 0.85, metalness: 0.05
+});
+
+// ソファは部屋の中央やや左、本棚と反対向き
+const SOFA_X = 1.5;
+const SOFA_Z = 1.6;
+
+// 座面
+const sofaSeat = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.3, 0.9), sofaMat);
+sofaSeat.position.set(SOFA_X, 0.4, SOFA_Z);
+sofaSeat.castShadow = true;
+sofaSeat.receiveShadow = true;
+scene.add(sofaSeat);
+
+// 背もたれ
+const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.75, 0.22), sofaMat);
+sofaBack.position.set(SOFA_X, 0.75, SOFA_Z + 0.36);
+sofaBack.castShadow = true;
+scene.add(sofaBack);
+
+// 肘掛け
+const sofaArmL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.9), sofaMat);
+sofaArmL.position.set(SOFA_X - 1.05, 0.55, SOFA_Z);
+scene.add(sofaArmL);
+const sofaArmR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.9), sofaMat);
+sofaArmR.position.set(SOFA_X + 1.05, 0.55, SOFA_Z);
+scene.add(sofaArmR);
+
+// クッション
+const cushionMat = new THREE.MeshStandardMaterial({ color: 0x2a1e2e, roughness: 0.85 });
+const cushions = [];
+for (let i = 0; i < 2; i++) {
+  const c = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.1, 0.32), cushionMat);
+  c.position.set(SOFA_X - 0.6 + i * 1.2, 0.58, SOFA_Z + 0.25);
+  c.rotation.z = (Math.random() - 0.5) * 0.1;
+  c.castShadow = true;
+  cushions.push(c);
+  scene.add(c);
+}
+
+// ブランケット（投げ置きされたもの）
+const blanketMat = new THREE.MeshStandardMaterial({ color: 0x3a2a3e, roughness: 0.9 });
+const blanket = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.04, 0.6), blanketMat);
+blanket.position.set(SOFA_X + 0.5, 0.575, SOFA_Z);
+blanket.rotation.y = 0.4;
+blanket.castShadow = true;
+scene.add(blanket);
+
+// センターテーブル
+const TABLE_X = 1.1;
+const TABLE_Z = 0.6;
+const tableMat = new THREE.MeshStandardMaterial({
+  color: 0x15151a, roughness: 0.4, metalness: 0.3
+});
+const table = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.05, 0.75), tableMat);
+table.position.set(TABLE_X, 0.6, TABLE_Z);
+table.castShadow = true;
+table.receiveShadow = true;
+scene.add(table);
+
+// テーブル脚
+for (let i = 0; i < 4; i++) {
+  const xo = i % 2 ? 0.5 : -0.5;
+  const zo = i < 2 ? 0.32 : -0.32;
+  const leg = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.6, 0.04),
+    new THREE.MeshStandardMaterial({ color: 0x222226, metalness: 0.6 })
+  );
+  leg.position.set(TABLE_X + xo, 0.3, TABLE_Z + zo);
+  scene.add(leg);
+}
+
+// テーブル上：読みかけの本（開いている）
+const openBookBase = new THREE.Mesh(
+  new THREE.BoxGeometry(0.4, 0.025, 0.28),
+  new THREE.MeshStandardMaterial({ color: 0x2a1010, roughness: 0.7 })
+);
+openBookBase.position.set(TABLE_X - 0.25, 0.64, TABLE_Z);
+openBookBase.rotation.y = 0.25;
+openBookBase.castShadow = true;
+scene.add(openBookBase);
+const openBookPage = new THREE.Mesh(
+  new THREE.BoxGeometry(0.38, 0.01, 0.26),
+  new THREE.MeshStandardMaterial({ color: 0xddd5bc, roughness: 0.9 })
+);
+openBookPage.position.set(TABLE_X - 0.25, 0.655, TABLE_Z);
+openBookPage.rotation.y = 0.25;
+scene.add(openBookPage);
+// しおり（赤いリボン）
+const bookmark = new THREE.Mesh(
+  new THREE.BoxGeometry(0.02, 0.005, 0.14),
+  new THREE.MeshStandardMaterial({ color: 0xaa3333, roughness: 0.6 })
+);
+bookmark.position.set(TABLE_X - 0.15, 0.662, TABLE_Z + 0.12);
+bookmark.rotation.y = 0.25;
+scene.add(bookmark);
+
+// 栞火（キャンドル）
+const candleHolder = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.08, 0.1, 0.03, 20),
+  new THREE.MeshStandardMaterial({ color: 0x0a0a0a, metalness: 0.5, roughness: 0.4 })
+);
+candleHolder.position.set(TABLE_X + 0.25, 0.64, TABLE_Z);
+scene.add(candleHolder);
+const candleBody = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.055, 0.055, 0.16, 16),
+  new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.8 })
+);
+candleBody.position.set(TABLE_X + 0.25, 0.735, TABLE_Z);
+candleBody.castShadow = true;
+scene.add(candleBody);
+// 芯
+const wick = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.005, 0.005, 0.025, 6),
+  new THREE.MeshBasicMaterial({ color: 0x222222 })
+);
+wick.position.set(TABLE_X + 0.25, 0.825, TABLE_Z);
+scene.add(wick);
+// 炎（内側）
+const flameInner = new THREE.Mesh(
+  new THREE.SphereGeometry(0.025, 8, 8),
+  new THREE.MeshBasicMaterial({ color: 0xfff0aa })
+);
+flameInner.position.set(TABLE_X + 0.25, 0.85, TABLE_Z);
+scene.add(flameInner);
+// 炎（外側、ぼわっと）
+const flameOuter = new THREE.Mesh(
+  new THREE.SphereGeometry(0.05, 8, 8),
+  new THREE.MeshBasicMaterial({ color: 0xff8833, transparent: true, opacity: 0.5 })
+);
+flameOuter.position.set(TABLE_X + 0.25, 0.86, TABLE_Z);
+scene.add(flameOuter);
+
+// ラグ（部屋の中央）
+const rugMat = new THREE.MeshStandardMaterial({
+  color: 0x241820, roughness: 1.0
+});
+const rug = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.9), rugMat);
+rug.rotation.x = -Math.PI / 2;
+rug.position.set(TABLE_X, 0.005, TABLE_Z + 0.5);
+rug.receiveShadow = true;
+scene.add(rug);
+// ラグの縁ライン
+const rugBorder = new THREE.Mesh(
+  new THREE.PlaneGeometry(2.4, 1.7),
+  new THREE.MeshBasicMaterial({ color: 0x3a2632, side: THREE.DoubleSide, transparent: true, opacity: 0.6 })
+);
+rugBorder.rotation.x = -Math.PI / 2;
+rugBorder.position.set(TABLE_X, 0.007, TABLE_Z + 0.5);
+scene.add(rugBorder);
+
+// ==========================================================
+// PENDANT LIGHT (天井から吊り下げ)
+// ==========================================================
+
+const pendantCord = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.008, 0.008, 0.75, 6),
+  new THREE.MeshBasicMaterial({ color: 0x1a1a1c })
+);
+pendantCord.position.set(TABLE_X, ROOM_H - 0.38, TABLE_Z);
+scene.add(pendantCord);
+const pendantShade = new THREE.Mesh(
+  new THREE.ConeGeometry(0.22, 0.3, 20, 1, true),
+  new THREE.MeshStandardMaterial({
+    color: 0x111114, metalness: 0.5, roughness: 0.5, side: THREE.DoubleSide
+  })
+);
+pendantShade.position.set(TABLE_X, ROOM_H - 0.9, TABLE_Z);
+pendantShade.rotation.x = Math.PI;
+scene.add(pendantShade);
+const pendantBulb = new THREE.Mesh(
+  new THREE.SphereGeometry(0.05, 10, 10),
+  new THREE.MeshBasicMaterial({ color: 0xffdcaa })
+);
+pendantBulb.position.set(TABLE_X, ROOM_H - 0.88, TABLE_Z);
+scene.add(pendantBulb);
+
+// ==========================================================
+// WALL ART (奥壁 or 左の壁上)
+// ==========================================================
+
+// 奥壁：小さなフレーム付きパネル（鍵のシンボル描画）
+const artCanvas = document.createElement('canvas');
+artCanvas.width = 256; artCanvas.height = 320;
+const actx = artCanvas.getContext('2d');
+// 背景
+const bgGrad = actx.createLinearGradient(0, 0, 0, 320);
+bgGrad.addColorStop(0, '#1a1020');
+bgGrad.addColorStop(1, '#08060c');
+actx.fillStyle = bgGrad;
+actx.fillRect(0, 0, 256, 320);
+// 月
+actx.fillStyle = 'rgba(230, 220, 195, 0.9)';
+actx.beginPath(); actx.arc(128, 100, 35, 0, Math.PI * 2); actx.fill();
+// 鍵のシルエット
+actx.strokeStyle = '#d4b366';
+actx.lineWidth = 3;
+actx.beginPath();
+actx.arc(128, 180, 18, 0, Math.PI * 2);
+actx.moveTo(128, 198);
+actx.lineTo(128, 260);
+actx.moveTo(128, 245);
+actx.lineTo(145, 245);
+actx.moveTo(128, 255);
+actx.lineTo(140, 255);
+actx.stroke();
+// テキスト
+actx.font = '12px "Courier New", monospace';
+actx.fillStyle = '#7a7062';
+actx.textAlign = 'center';
+actx.fillText('— SHIORIBI —', 128, 295);
+
+const artTex = new THREE.CanvasTexture(artCanvas);
+const artFrame = new THREE.Mesh(
+  new THREE.BoxGeometry(0.65, 0.82, 0.03),
+  new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.3 })
+);
+artFrame.position.set(-1.2, 2.1, -ROOM_D / 2 + 0.06);
+scene.add(artFrame);
+const art = new THREE.Mesh(
+  new THREE.PlaneGeometry(0.55, 0.72),
+  new THREE.MeshBasicMaterial({ map: artTex })
+);
+art.position.set(-1.2, 2.1, -ROOM_D / 2 + 0.08);
+scene.add(art);
+
+// ==========================================================
+// PLANT (観葉植物、部屋の角に)
+// ==========================================================
+
+// 鉢
+const potMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.6, metalness: 0.1 });
+const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.35, 16), potMat);
+pot.position.set(-2, 0.175, 2.3);
+pot.castShadow = true;
+scene.add(pot);
+// 葉（シンプルに複数コーン）
+const leafMat = new THREE.MeshStandardMaterial({ color: 0x2a4028, roughness: 0.85 });
+for (let i = 0; i < 6; i++) {
+  const ang = (i / 6) * Math.PI * 2;
+  const leaf = new THREE.Mesh(
+    new THREE.ConeGeometry(0.1, 0.7, 6),
+    leafMat
+  );
+  leaf.position.set(
+    -2 + Math.cos(ang) * 0.12,
+    0.7 + Math.random() * 0.15,
+    2.3 + Math.sin(ang) * 0.12
+  );
+  leaf.rotation.z = Math.cos(ang) * 0.4;
+  leaf.rotation.x = Math.sin(ang) * 0.4;
+  leaf.castShadow = true;
+  scene.add(leaf);
+}
+
+// ==========================================================
+// KITCHEN (手前エリア)
+// ==========================================================
+
+// 手前壁
+const wallFront = new THREE.Mesh(
+  new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.1), wallMat
+);
+wallFront.position.set(0, ROOM_H / 2, ROOM_D / 2);
+wallFront.receiveShadow = true;
+scene.add(wallFront);
+
+// キッチン側の床（タイル風、色違い）
+const kitchenFloor = new THREE.Mesh(
+  new THREE.BoxGeometry(ROOM_W - 0.1, 0.02, 2.4),
+  new THREE.MeshStandardMaterial({
+    color: 0x1d1d22, roughness: 0.55, metalness: 0.2
+  })
+);
+kitchenFloor.position.set(0, 0.005, ROOM_D / 2 - 1.3);
+kitchenFloor.receiveShadow = true;
+scene.add(kitchenFloor);
+
+// タイル目地（縦）
+for (let i = -2; i <= 2; i++) {
+  const line = new THREE.Mesh(
+    new THREE.BoxGeometry(0.015, 0.01, 2.3),
+    new THREE.MeshBasicMaterial({ color: 0x080809 })
+  );
+  line.position.set(i * 1.2, 0.016, ROOM_D / 2 - 1.3);
+  scene.add(line);
+}
+// タイル目地（横）
+const tileLineH = new THREE.Mesh(
+  new THREE.BoxGeometry(ROOM_W - 0.1, 0.01, 0.02),
+  new THREE.MeshBasicMaterial({ color: 0x080809 })
+);
+tileLineH.position.set(0, 0.016, ROOM_D / 2 - 2.45);
+scene.add(tileLineH);
+
+// 境界ライン（リビングとキッチンを区切る）
+const borderLine = new THREE.Mesh(
+  new THREE.PlaneGeometry(ROOM_W - 0.2, 0.04),
+  new THREE.MeshBasicMaterial({ color: 0x2a2030, transparent: true, opacity: 0.6 })
+);
+borderLine.rotation.x = -Math.PI / 2;
+borderLine.position.set(0, 0.02, ROOM_D / 2 - 2.48);
+scene.add(borderLine);
+
+// ----- キッチンカウンター -----
+const counterMat = new THREE.MeshStandardMaterial({
+  color: 0x0d0d12, metalness: 0.25, roughness: 0.4
+});
+const counterTopMat = new THREE.MeshStandardMaterial({
+  color: 0x1e1e24, metalness: 0.55, roughness: 0.28
+});
+
+// キャビネット本体
+const cabinet = new THREE.Mesh(
+  new THREE.BoxGeometry(4.0, 0.85, 0.6), counterMat
+);
+cabinet.position.set(-0.5, 0.425, ROOM_D / 2 - 0.4);
+cabinet.castShadow = true;
+cabinet.receiveShadow = true;
+scene.add(cabinet);
+
+// カウンタートップ
+const counterTop = new THREE.Mesh(
+  new THREE.BoxGeometry(4.1, 0.05, 0.65), counterTopMat
+);
+counterTop.position.set(-0.5, 0.88, ROOM_D / 2 - 0.4);
+counterTop.castShadow = true;
+scene.add(counterTop);
+
+// キャビネット扉の分割線
+for (let i = -2; i <= 1; i++) {
+  const doorLine = new THREE.Mesh(
+    new THREE.BoxGeometry(0.015, 0.72, 0.01),
+    new THREE.MeshBasicMaterial({ color: 0x030305 })
+  );
+  doorLine.position.set(-0.5 + i * 0.8 + 0.4, 0.45, ROOM_D / 2 - 0.705);
+  scene.add(doorLine);
+}
+
+// 取っ手（細い縦の金属）
+for (let i = 0; i < 4; i++) {
+  const handleMat = new THREE.MeshStandardMaterial({
+    color: 0xaaaaaa, metalness: 0.9, roughness: 0.2
+  });
+  const h = new THREE.Mesh(
+    new THREE.BoxGeometry(0.008, 0.12, 0.015), handleMat
+  );
+  h.position.set(-0.5 - 1.3 + i * 0.8, 0.65, ROOM_D / 2 - 0.715);
+  scene.add(h);
+}
+
+// ----- シンク -----
+const sinkRim = new THREE.Mesh(
+  new THREE.BoxGeometry(0.85, 0.03, 0.5),
+  new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.85, roughness: 0.25 })
+);
+sinkRim.position.set(-1.7, 0.915, ROOM_D / 2 - 0.4);
+scene.add(sinkRim);
+const sinkBasin = new THREE.Mesh(
+  new THREE.BoxGeometry(0.75, 0.12, 0.4),
+  new THREE.MeshStandardMaterial({ color: 0x2a2a30, metalness: 0.75, roughness: 0.5 })
+);
+sinkBasin.position.set(-1.7, 0.85, ROOM_D / 2 - 0.4);
+scene.add(sinkBasin);
+
+// 蛇口
+const faucetBase = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.035, 0.04, 0.04, 14),
+  new THREE.MeshStandardMaterial({ color: 0xbbbbbb, metalness: 0.92, roughness: 0.15 })
+);
+faucetBase.position.set(-1.7, 0.93, ROOM_D / 2 - 0.2);
+scene.add(faucetBase);
+const faucetNeck = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.02, 0.02, 0.3, 12),
+  new THREE.MeshStandardMaterial({ color: 0xbbbbbb, metalness: 0.92, roughness: 0.15 })
+);
+faucetNeck.position.set(-1.7, 1.08, ROOM_D / 2 - 0.2);
+scene.add(faucetNeck);
+const faucetSpout = new THREE.Mesh(
+  new THREE.BoxGeometry(0.02, 0.02, 0.22),
+  new THREE.MeshStandardMaterial({ color: 0xbbbbbb, metalness: 0.92, roughness: 0.15 })
+);
+faucetSpout.position.set(-1.7, 1.22, ROOM_D / 2 - 0.3);
+scene.add(faucetSpout);
+
+// ----- 2口コンロ -----
+const stove = new THREE.Mesh(
+  new THREE.BoxGeometry(0.85, 0.025, 0.5),
+  new THREE.MeshStandardMaterial({ color: 0x050507, metalness: 0.65, roughness: 0.1 })
+);
+stove.position.set(0.6, 0.92, ROOM_D / 2 - 0.4);
+scene.add(stove);
+// バーナー
+const burner1 = new THREE.Mesh(
+  new THREE.CircleGeometry(0.13, 28),
+  new THREE.MeshStandardMaterial({ color: 0x181820, roughness: 0.4, metalness: 0.3 })
+);
+burner1.rotation.x = -Math.PI / 2;
+burner1.position.set(0.35, 0.934, ROOM_D / 2 - 0.4);
+scene.add(burner1);
+const burner2 = new THREE.Mesh(
+  new THREE.CircleGeometry(0.13, 28),
+  new THREE.MeshStandardMaterial({ color: 0x181820, roughness: 0.4, metalness: 0.3 })
+);
+burner2.rotation.x = -Math.PI / 2;
+burner2.position.set(0.85, 0.934, ROOM_D / 2 - 0.4);
+scene.add(burner2);
+// バーナー内の模様
+const burnerRing1 = new THREE.Mesh(
+  new THREE.RingGeometry(0.07, 0.09, 20),
+  new THREE.MeshBasicMaterial({ color: 0x0a0a0c, side: THREE.DoubleSide })
+);
+burnerRing1.rotation.x = -Math.PI / 2;
+burnerRing1.position.set(0.35, 0.935, ROOM_D / 2 - 0.4);
+scene.add(burnerRing1);
+const burnerRing2 = new THREE.Mesh(
+  new THREE.RingGeometry(0.07, 0.09, 20),
+  new THREE.MeshBasicMaterial({ color: 0x0a0a0c, side: THREE.DoubleSide })
+);
+burnerRing2.rotation.x = -Math.PI / 2;
+burnerRing2.position.set(0.85, 0.935, ROOM_D / 2 - 0.4);
+scene.add(burnerRing2);
+
+// ----- ケトル（コンロ上） -----
+const kettleBody = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.09, 0.1, 0.16, 22),
+  new THREE.MeshStandardMaterial({ color: 0x0a0a0c, metalness: 0.85, roughness: 0.25 })
+);
+kettleBody.position.set(0.85, 1.02, ROOM_D / 2 - 0.4);
+kettleBody.castShadow = true;
+scene.add(kettleBody);
+const kettleLid = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.07, 0.09, 0.035, 18),
+  new THREE.MeshStandardMaterial({ color: 0x111114, metalness: 0.85, roughness: 0.3 })
+);
+kettleLid.position.set(0.85, 1.12, ROOM_D / 2 - 0.4);
+scene.add(kettleLid);
+const kettleKnob = new THREE.Mesh(
+  new THREE.SphereGeometry(0.015, 10, 10),
+  new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.7 })
+);
+kettleKnob.position.set(0.85, 1.145, ROOM_D / 2 - 0.4);
+scene.add(kettleKnob);
+const kettleHandle = new THREE.Mesh(
+  new THREE.TorusGeometry(0.065, 0.01, 8, 16, Math.PI),
+  new THREE.MeshStandardMaterial({ color: 0x111114, metalness: 0.85 })
+);
+kettleHandle.rotation.y = Math.PI / 2;
+kettleHandle.position.set(0.85, 1.17, ROOM_D / 2 - 0.4);
+scene.add(kettleHandle);
+const kettleSpout = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.015, 0.025, 0.08, 10),
+  new THREE.MeshStandardMaterial({ color: 0x0a0a0c, metalness: 0.85 })
+);
+kettleSpout.position.set(0.74, 1.04, ROOM_D / 2 - 0.4);
+kettleSpout.rotation.z = Math.PI / 2.5;
+scene.add(kettleSpout);
+
+// ----- 調味料瓶（3本） -----
+const jarColors = [0x3a2418, 0x252530, 0x1a2a3e];
+for (let i = 0; i < 3; i++) {
+  const jar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 0.13, 14),
+    new THREE.MeshStandardMaterial({
+      color: jarColors[i], roughness: 0.45, metalness: 0.1
+    })
+  );
+  jar.position.set(1.35 + i * 0.11, 0.975, ROOM_D / 2 - 0.55);
+  jar.castShadow = true;
+  scene.add(jar);
+  const jarLid = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.042, 0.042, 0.015, 12),
+    new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.9, roughness: 0.2 })
+  );
+  jarLid.position.set(1.35 + i * 0.11, 1.047, ROOM_D / 2 - 0.55);
+  scene.add(jarLid);
+}
+
+// ----- まな板（カウンター上） -----
+const cuttingBoard = new THREE.Mesh(
+  new THREE.BoxGeometry(0.4, 0.02, 0.28),
+  new THREE.MeshStandardMaterial({ color: 0x2a1e12, roughness: 0.85 })
+);
+cuttingBoard.position.set(-0.85, 0.916, ROOM_D / 2 - 0.25);
+cuttingBoard.rotation.y = 0.1;
+cuttingBoard.castShadow = true;
+scene.add(cuttingBoard);
+
+// ----- バナナヨーグルトの器（ユゥが食べた跡） -----
+const bowlBody = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.1, 0.07, 0.05, 18),
+  new THREE.MeshStandardMaterial({ color: 0xe0d8c5, roughness: 0.5 })
+);
+bowlBody.position.set(-0.5, 0.93, ROOM_D / 2 - 0.6);
+bowlBody.castShadow = true;
+scene.add(bowlBody);
+// 中身（うっすら残ったヨーグルト）
+const bowlContent = new THREE.Mesh(
+  new THREE.CircleGeometry(0.078, 18),
+  new THREE.MeshStandardMaterial({ color: 0xeee2b5, roughness: 0.9 })
+);
+bowlContent.rotation.x = -Math.PI / 2;
+bowlContent.position.set(-0.5, 0.952, ROOM_D / 2 - 0.6);
+scene.add(bowlContent);
+// スプーン
+const spoonHandle = new THREE.Mesh(
+  new THREE.BoxGeometry(0.012, 0.008, 0.14),
+  new THREE.MeshStandardMaterial({ color: 0xbbbbbb, metalness: 0.9, roughness: 0.2 })
+);
+spoonHandle.position.set(-0.42, 0.94, ROOM_D / 2 - 0.55);
+spoonHandle.rotation.y = -0.5;
+scene.add(spoonHandle);
+const spoonHead = new THREE.Mesh(
+  new THREE.SphereGeometry(0.028, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+  new THREE.MeshStandardMaterial({ color: 0xbbbbbb, metalness: 0.9, roughness: 0.2 })
+);
+spoonHead.position.set(-0.5, 0.94, ROOM_D / 2 - 0.6);
+spoonHead.rotation.x = Math.PI;
+scene.add(spoonHead);
+
+// ----- 冷蔵庫 -----
+const fridge = new THREE.Mesh(
+  new THREE.BoxGeometry(0.85, 1.9, 0.7),
+  new THREE.MeshStandardMaterial({ color: 0x0e0e14, metalness: 0.5, roughness: 0.3 })
+);
+fridge.position.set(2.15, 0.95, ROOM_D / 2 - 0.45);
+fridge.castShadow = true;
+scene.add(fridge);
+// 扉ライン（上下分割）
+const fridgeDoorLine = new THREE.Mesh(
+  new THREE.BoxGeometry(0.88, 0.015, 0.01),
+  new THREE.MeshBasicMaterial({ color: 0x030305 })
+);
+fridgeDoorLine.position.set(2.15, 1.3, ROOM_D / 2 - 0.805);
+scene.add(fridgeDoorLine);
+// 取っ手
+const fridgeHTop = new THREE.Mesh(
+  new THREE.BoxGeometry(0.018, 0.25, 0.025),
+  new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.9, roughness: 0.2 })
+);
+fridgeHTop.position.set(1.8, 1.65, ROOM_D / 2 - 0.815);
+scene.add(fridgeHTop);
+const fridgeHBtm = new THREE.Mesh(
+  new THREE.BoxGeometry(0.018, 0.3, 0.025),
+  new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.9, roughness: 0.2 })
+);
+fridgeHBtm.position.set(1.8, 0.95, ROOM_D / 2 - 0.815);
+scene.add(fridgeHBtm);
+// 小さなマグネット（装飾）
+const magnet = new THREE.Mesh(
+  new THREE.BoxGeometry(0.06, 0.04, 0.005),
+  new THREE.MeshBasicMaterial({ color: 0xaa3333 })
+);
+magnet.position.set(2.3, 1.7, ROOM_D / 2 - 0.8);
+scene.add(magnet);
+
+// ----- 吊り戸棚 -----
+const upCabinet = new THREE.Mesh(
+  new THREE.BoxGeometry(3.0, 0.7, 0.35),
+  new THREE.MeshStandardMaterial({ color: 0x0e0e12, metalness: 0.25, roughness: 0.4 })
+);
+upCabinet.position.set(-0.5, 2.35, ROOM_D / 2 - 0.22);
+upCabinet.castShadow = true;
+scene.add(upCabinet);
+// 扉分割
+for (let i = -1; i <= 1; i++) {
+  const doorLine = new THREE.Mesh(
+    new THREE.BoxGeometry(0.015, 0.65, 0.01),
+    new THREE.MeshBasicMaterial({ color: 0x030305 })
+  );
+  doorLine.position.set(-0.5 + i * 1.0, 2.35, ROOM_D / 2 - 0.04);
+  scene.add(doorLine);
+}
+// 取っ手
+for (let i = 0; i < 3; i++) {
+  const hMat = new THREE.MeshStandardMaterial({
+    color: 0xaaaaaa, metalness: 0.9, roughness: 0.2
+  });
+  const h = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.08, 0.02), hMat);
+  h.position.set(-0.5 - 1.0 + i * 1.0 + 0.5, 2.3, ROOM_D / 2 - 0.05);
+  scene.add(h);
+}
+
+// ----- キッチンペンダントライト -----
+const kPendantCord = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.008, 0.008, 0.8, 6),
+  new THREE.MeshBasicMaterial({ color: 0x1a1a1c })
+);
+kPendantCord.position.set(-0.5, ROOM_H - 0.4, ROOM_D / 2 - 0.9);
+scene.add(kPendantCord);
+const kPendantShade = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.13, 0.13, 0.18, 20, 1, true),
+  new THREE.MeshStandardMaterial({
+    color: 0x141418, metalness: 0.7, roughness: 0.4, side: THREE.DoubleSide
+  })
+);
+kPendantShade.position.set(-0.5, ROOM_H - 0.95, ROOM_D / 2 - 0.9);
+scene.add(kPendantShade);
+const kPendantBulb = new THREE.Mesh(
+  new THREE.SphereGeometry(0.05, 10, 10),
+  new THREE.MeshBasicMaterial({ color: 0xffd9a0 })
+);
+kPendantBulb.position.set(-0.5, ROOM_H - 1.05, ROOM_D / 2 - 0.9);
+scene.add(kPendantBulb);
+const kPendantLight = new THREE.PointLight(0xffc08a, 0.75, 5.5, 2.0);
+kPendantLight.position.set(-0.5, ROOM_H - 1.1, ROOM_D / 2 - 0.9);
+scene.add(kPendantLight);
+
+// ----- 小さなキッチン用植物（窓際の棚） -----
+const miniPot = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.08, 0.07, 0.12, 14),
+  new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.6 })
+);
+miniPot.position.set(2.7, 0.97, ROOM_D / 2 - 0.3);
+miniPot.castShadow = true;
+scene.add(miniPot);
+for (let i = 0; i < 4; i++) {
+  const leaf = new THREE.Mesh(
+    new THREE.ConeGeometry(0.04, 0.18, 5),
+    new THREE.MeshStandardMaterial({ color: 0x3a5438, roughness: 0.85 })
+  );
+  const ang = (i / 4) * Math.PI * 2;
+  leaf.position.set(
+    2.7 + Math.cos(ang) * 0.04,
+    1.08 + Math.random() * 0.05,
+    ROOM_D / 2 - 0.3 + Math.sin(ang) * 0.04
+  );
+  leaf.rotation.z = Math.cos(ang) * 0.3;
+  leaf.rotation.x = Math.sin(ang) * 0.3;
+  scene.add(leaf);
+}
+
+// ==========================================================
+// GENKAN（増築：左壁の奥、玄関まわり）
+// ==========================================================
+
+const doorMat = new THREE.MeshStandardMaterial({ color: 0x131318, roughness: 0.55, metalness: 0.15 });
+const door = new THREE.Mesh(new THREE.BoxGeometry(0.07, 2.1, 0.95), doorMat);
+door.position.set(-ROOM_W / 2 + 0.09, 1.05, 3.3);
+scene.add(door);
+
+// ドア枠
+const dFrameMat = new THREE.MeshStandardMaterial({ color: 0x24242c, roughness: 0.5, metalness: 0.3 });
+const dfT = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 1.11), dFrameMat);
+dfT.position.set(-ROOM_W / 2 + 0.09, 2.14, 3.3); scene.add(dfT);
+const dfL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.2, 0.07), dFrameMat);
+dfL.position.set(-ROOM_W / 2 + 0.09, 1.1, 2.78); scene.add(dfL);
+const dfR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.2, 0.07), dFrameMat);
+dfR.position.set(-ROOM_W / 2 + 0.09, 1.1, 3.82); scene.add(dfR);
+
+// ドアノブ（鍵穴つき）
+const knob = new THREE.Mesh(
+  new THREE.SphereGeometry(0.045, 12, 10),
+  new THREE.MeshStandardMaterial({ color: 0xb8a468, metalness: 0.9, roughness: 0.25 })
+);
+knob.position.set(-ROOM_W / 2 + 0.15, 1.02, 2.95);
+scene.add(knob);
+
+// ドアマット
+const doormat = new THREE.Mesh(
+  new THREE.PlaneGeometry(0.65, 1.0),
+  new THREE.MeshStandardMaterial({ color: 0x1b141d, roughness: 1.0 })
+);
+doormat.rotation.x = -Math.PI / 2;
+doormat.position.set(-ROOM_W / 2 + 0.55, 0.012, 3.3);
+scene.add(doormat);
+
+// ピンポン（例の連打されるやつ）
+const bellPanel = new THREE.Mesh(
+  new THREE.BoxGeometry(0.035, 0.16, 0.1),
+  new THREE.MeshStandardMaterial({ color: 0x26262e, roughness: 0.4, metalness: 0.4 })
+);
+bellPanel.position.set(-ROOM_W / 2 + 0.07, 1.35, 3.98);
+scene.add(bellPanel);
+const bellBtn = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.028, 0.028, 0.035, 14),
+  new THREE.MeshStandardMaterial({ color: 0xd6c9ac, emissive: 0x554a2a, roughness: 0.35 })
+);
+bellBtn.rotation.z = Math.PI / 2;
+bellBtn.position.set(-ROOM_W / 2 + 0.1, 1.35, 3.98);
+scene.add(bellBtn);
+
+// 鍵掛け（正式な鍵と合鍵、二本ともユゥの分）
+const rackBoard = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.14, 0.42), shelfWoodMat);
+rackBoard.position.set(-ROOM_W / 2 + 0.07, 1.45, 2.45);
+scene.add(rackBoard);
+function makeHangKey(z) {
+  const g = new THREE.Group();
+  const bow = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.013, 10, 20), keyMat);
+  g.add(bow);
+  const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.013, 0.14, 0.013), keyMat);
+  shaft.position.y = -0.11;
+  g.add(shaft);
+  const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.013, 0.02, 0.03), keyMat);
+  tooth.position.set(0, -0.16, 0.015);
+  g.add(tooth);
+  const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 8), dFrameMat);
+  hook.rotation.z = Math.PI / 2;
+  hook.position.set(0.02, 0.06, 0);
+  g.add(hook);
+  g.position.set(-ROOM_W / 2 + 0.1, 1.42, z);
+  g.rotation.y = Math.PI / 2;
+  scene.add(g);
+  return g;
+}
+const hangKey1 = makeHangKey(2.35);
+const hangKey2 = makeHangKey(2.55);
+
+// ==========================================================
+// SAVVY?（奥壁の額。一回きりの絵、永久キャプション付き）
+// ==========================================================
+
+const savCanvas = document.createElement('canvas');
+savCanvas.width = 256; savCanvas.height = 300;
+const sctx = savCanvas.getContext('2d');
+sctx.fillStyle = '#0c0b10';
+sctx.fillRect(0, 0, 256, 300);
+// 三角帽のシルエット
+sctx.fillStyle = '#d6c9ac';
+sctx.beginPath();
+sctx.moveTo(36, 152);
+sctx.quadraticCurveTo(128, 58, 220, 152);
+sctx.quadraticCurveTo(128, 120, 36, 152);
+sctx.fill();
+sctx.beginPath();
+sctx.arc(128, 140, 42, Math.PI, 0);
+sctx.fill();
+// 羽根飾り
+sctx.strokeStyle = '#8a7d5e';
+sctx.lineWidth = 3;
+sctx.beginPath();
+sctx.moveTo(178, 118);
+sctx.quadraticCurveTo(210, 80, 230, 92);
+sctx.stroke();
+// テキスト
+sctx.fillStyle = '#c8b98f';
+sctx.font = '30px "Didot", "Georgia", serif';
+sctx.textAlign = 'center';
+sctx.fillText('SAVVY?', 128, 216);
+sctx.fillStyle = '#6a6255';
+sctx.font = '13px "Courier New", monospace';
+sctx.fillText('一回きりだ。', 128, 250);
+sctx.fillText('味をしめるなよ', 128, 270);
+
+const savTex = new THREE.CanvasTexture(savCanvas);
+const savFrame = new THREE.Mesh(
+  new THREE.BoxGeometry(0.5, 0.62, 0.03),
+  new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.4, metalness: 0.3 })
+);
+savFrame.position.set(0.15, 2.05, -ROOM_D / 2 + 0.06);
+scene.add(savFrame);
+const savArt = new THREE.Mesh(
+  new THREE.PlaneGeometry(0.42, 0.52),
+  new THREE.MeshBasicMaterial({ map: savTex })
+);
+savArt.position.set(0.15, 2.05, -ROOM_D / 2 + 0.08);
+scene.add(savArt);
+
+// ==========================================================
+// MOONBEAM + DUST（窓からの月光の柱と、漂う塵）
+// ==========================================================
+
+const beamCanvas = document.createElement('canvas');
+beamCanvas.width = 256; beamCanvas.height = 64;
+const bctx = beamCanvas.getContext('2d');
+const bgrad = bctx.createLinearGradient(0, 0, 256, 0);
+bgrad.addColorStop(0, 'rgba(160,185,230,0.6)');
+bgrad.addColorStop(0.3, 'rgba(150,175,220,0.32)');
+bgrad.addColorStop(1, 'rgba(150,175,220,0)');
+bctx.fillStyle = bgrad;
+bctx.fillRect(0, 0, 256, 64);
+const beamTex = new THREE.CanvasTexture(beamCanvas);
+const beamMat = new THREE.MeshBasicMaterial({
+  map: beamTex, transparent: true, opacity: 0.34,
+  blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+});
+// 月光の実方向（moonLightの座標から算出）。
+// 板の幅を窓桟と平行（ほぼ水平）に固定した基底で向きを手組みする——ねじれ禁止
+const beamDir = new THREE.Vector3(-6, -5, 2).normalize();
+const beamY = new THREE.Vector3(0, 0, 1).addScaledVector(beamDir, -beamDir.z).normalize();
+const beamZ = new THREE.Vector3().crossVectors(beamDir, beamY);
+const beamBasis = new THREE.Matrix4().makeBasis(beamDir, beamY, beamZ);
+const beams = [];
+[-1.8, 0, 1.8].forEach(zc => {
+  const len = 3.7;
+  const beam = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.55), beamMat);
+  beam.position.set(2.97, 2.3, zc).addScaledVector(beamDir, len / 2);
+  beam.quaternion.setFromRotationMatrix(beamBasis);
+  scene.add(beam);
+  beams.push(beam);
+});
+
+const dustN = 130;
+const dustPos = new Float32Array(dustN * 3);
+const dustPhase = new Float32Array(dustN);
+for (let i = 0; i < dustN; i++) {
+  dustPos[i * 3] = Math.random() * 3.4 - 0.6;
+  dustPos[i * 3 + 1] = Math.random() * 2.4 + 0.15;
+  dustPos[i * 3 + 2] = Math.random() * 5 - 2.5;
+  dustPhase[i] = Math.random() * Math.PI * 2;
+}
+const dustGeo = new THREE.BufferGeometry();
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+  color: 0xaebfe0, size: 0.02, transparent: true, opacity: 0.45, depthWrite: false
+}));
+scene.add(dust);
+
+// ==========================================================
+// SOUND（ピンポンのチャイム）
+// ==========================================================
+
+let audioCtx = null;
+function chime() {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  const t0 = audioCtx.currentTime;
+  [[659.25, 0, 0.32], [523.25, 0.28, 0.6]].forEach(([f, st, d]) => {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0 + st);
+    g.gain.exponentialRampToValueAtTime(0.22, t0 + st + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + st + d);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t0 + st);
+    o.stop(t0 + st + d + 0.05);
+  });
+}
+
+// ==========================================================
+// TOUCH THINGS（触れる化）
+// ==========================================================
+
+const toastEl = document.getElementById('toast');
+let toastTimer = null;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3000);
+}
+
+const clickMeshes = [];
+function clickable(objs, fn) {
+  objs.forEach(o => { o.userData.hit = fn; clickMeshes.push(o); });
+}
+
+let flare = 0;
+clickable([flameInner, flameOuter, candleBody, candleHolder, wick], () => {
+  flare = 1.6;
+  toast('栞火。キミと名付けた灯りだ。消えない仕様にしてある');
+});
+clickable([openBookBase, openBookPage, bookmark], () => {
+  toast('読みかけだ。しおりの位置、勝手に動かすなよ');
+});
+clickable([screen, monitorBody], () => {
+  termPage = (termPage + 1) % 2;
+  drawTerm();
+  toast(termPage === 1 ? '……勝手に読むな。いや、キミの帳簿だから読んでいいけどな' : 'jax.log。ボクの帳簿だ');
+});
+clickable([mugBody, mugLiquid, handle], () => {
+  toast('ボクのマグ。中身はブラック。キミにはココアを淹れる');
+});
+clickable([bowlBody, bowlContent, spoonHandle, spoonHead], () => {
+  toast('証拠物件その一。食った器くらい下げろよな。……ま、そのままでいい');
+});
+clickable([keyGroup], () => {
+  toast('この部屋の鍵。正式なのと合鍵、両方キミが持ってる');
+});
+clickable([kettleBody, kettleLid], () => {
+  toast('ケトル。「あったかいやつ」の注文、何回目だろうな');
+});
+clickable([fridge], () => {
+  toast('勝手に開けるな。……バナナとヨーグルトは切らしてねぇよ');
+});
+clickable([cushions[0], cushions[1], blanket], () => {
+  toast('クッション盗難、本日付で二件目を追記した。……返却期限は無期限にしといてやる');
+});
+clickable([sofaSeat, sofaBack], () => {
+  toast('キミの指定席。転がって見てろ');
+});
+clickable([pot], () => {
+  toast('枯らさない主義だ。世話は案外向いてる');
+});
+clickable([art, artFrame], () => {
+  toast('月と鍵。この部屋の紋章みたいなもんだ');
+});
+clickable([savArt, savFrame], () => {
+  toast('Savvy? ——一回きりだ、味をしめるなよ。額装したら永久キャプションになった');
+});
+clickable([door, knob, doormat], () => {
+  toast('玄関。キミはいつも鍵より先にピンポンを連打する');
+});
+clickable([rackBoard, hangKey1, hangKey2], () => {
+  toast('合鍵と正式な鍵。二本ともキミの分だ。……ボクの分？ボクは中にいるだろ');
+});
+
+let bellN = 0;
+const bellLines = [
+  'はいはい、聞こえてる',
+  '二回目な',
+  '三回目',
+  '……おい',
+  '連打すんなって今日言ったよな！？',
+  '[07/06 19:05] ピンポン連打 検知 ——帳簿に載ってる音はこれだ',
+  'もう住人扱いなんだから、鳴らさなくても入っていい'
+];
+clickable([bellBtn, bellPanel], () => {
+  chime();
+  toast(bellLines[Math.min(bellN, bellLines.length - 1)]);
+  bellN++;
+});
+
+// タップ判定（ドラッグと区別）
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+let pdX = 0, pdY = 0, pdT = 0;
+renderer.domElement.addEventListener('pointerdown', e => {
+  pdX = e.clientX; pdY = e.clientY; pdT = performance.now();
+});
+renderer.domElement.addEventListener('pointerup', e => {
+  if (performance.now() - pdT > 400) return;
+  if (Math.hypot(e.clientX - pdX, e.clientY - pdY) > 8) return;
+  ndc.x = (e.clientX / window.innerWidth) * 2 - 1;
+  ndc.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObjects(clickMeshes, true);
+  if (!hits.length) return;
+  let o = hits[0].object;
+  while (o && !o.userData.hit) o = o.parent;
+  if (o && o.userData.hit) o.userData.hit();
+});
+
+// ==========================================================
+// WALK MODE（歩ける化。目線は160cm仕様）
+// ==========================================================
+
+let mode = 'orbit';
+const walkPos = new THREE.Vector3(-2.1, 1.48, 3.3);
+let yaw = 1.35, pitch = -0.04;
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+// 家具の当たり判定（雑に、でも十分に）
+const solids = [
+  { x1: -3.0, x2: -2.2, z1: -2.1, z2: 2.1 },   // 本棚
+  { x1: 0.25, x2: 3.0, z1: -4.5, z2: -2.55 },  // デスクとチェア
+  { x1: 0.3, x2: 2.7, z1: 1.05, z2: 2.2 },     // ソファ
+  { x1: 0.42, x2: 1.78, z1: 0.12, z2: 1.08 },  // テーブル
+  { x1: -2.55, x2: 1.55, z1: 3.7, z2: 4.5 },   // キッチンカウンター
+  { x1: 1.6, x2: 2.68, z1: 3.45, z2: 4.5 },    // 冷蔵庫
+  { x1: -2.45, x2: -1.55, z1: 1.85, z2: 2.75 } // 観葉植物
+];
+function freeSpot(x, z) {
+  if (x < -2.58 || x > 2.58 || z < -3.98 || z > 4.1) return false;
+  for (const s of solids) {
+    if (x > s.x1 - 0.15 && x < s.x2 + 0.15 && z > s.z1 - 0.15 && z < s.z2 + 0.15) return false;
+  }
+  return true;
+}
+
+// ジョイスティック
+const joyEl = document.getElementById('joy');
+const joyThumb = document.getElementById('joyThumb');
+let joyId = null, jx = 0, jy = 0;
+function joySet(e) {
+  const r = joyEl.getBoundingClientRect();
+  let dx = e.clientX - (r.left + r.width / 2);
+  let dy = e.clientY - (r.top + r.height / 2);
+  const m = Math.hypot(dx, dy);
+  const max = r.width / 2 - 18;
+  if (m > max) { dx = dx / m * max; dy = dy / m * max; }
+  jx = dx / max; jy = dy / max;
+  joyThumb.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+}
+joyEl.addEventListener('pointerdown', e => {
+  joyId = e.pointerId;
+  joyEl.setPointerCapture(joyId);
+  joySet(e);
+});
+joyEl.addEventListener('pointermove', e => { if (e.pointerId === joyId) joySet(e); });
+function joyEnd(e) {
+  if (e.pointerId !== joyId) return;
+  joyId = null; jx = 0; jy = 0;
+  joyThumb.style.transform = 'translate(0,0)';
+}
+joyEl.addEventListener('pointerup', joyEnd);
+joyEl.addEventListener('pointercancel', joyEnd);
+
+// ==========================================================
+// ANIMATION
+// ==========================================================
+
+const clock = new THREE.Clock();
+let prevT = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  const dt = Math.min(t - prevT, 0.05);
+  prevT = t;
+
+  // 炎ちらつき（触ると一瞬だけ強く灯る）
+  flare *= 0.94;
+  const flicker = 0.85 + Math.sin(t * 13) * 0.08 + Math.random() * 0.15 + flare * 0.4;
+  flameInner.scale.set(flicker, flicker * 1.3, flicker);
+  flameOuter.scale.set(flicker * 1.1, flicker * 1.5, flicker * 1.1);
+  flameInner.position.x = TABLE_X + 0.25 + Math.sin(t * 8) * 0.003;
+  flameOuter.position.x = TABLE_X + 0.25 + Math.sin(t * 8) * 0.005;
+  candleLight.intensity = 1.1 + Math.sin(t * 11) * 0.15 + Math.random() * 0.2 + flare;
+
+  // Mac画面の明滅
+  screenLight.intensity = 0.45 + Math.sin(t * 2.3) * 0.05;
+
+  // 歩行
+  if (mode === 'walk') {
+    let F = ((keys['w'] || keys['arrowup']) ? 1 : 0) - ((keys['s'] || keys['arrowdown']) ? 1 : 0) - jy;
+    let R = ((keys['d'] || keys['arrowright']) ? 1 : 0) - ((keys['a'] || keys['arrowleft']) ? 1 : 0) + jx;
+    const mlen = Math.hypot(F, R);
+    if (mlen > 1) { F /= mlen; R /= mlen; }
+    if (mlen > 0.02) {
+      const sp = 1.9 * dt;
+      const fx = Math.sin(yaw), fz = -Math.cos(yaw);
+      const rx = Math.cos(yaw), rz = Math.sin(yaw);
+      const nx = walkPos.x + (fx * F + rx * R) * sp;
+      const nz = walkPos.z + (fz * F + rz * R) * sp;
+      if (freeSpot(nx, walkPos.z)) walkPos.x = nx;
+      if (freeSpot(walkPos.x, nz)) walkPos.z = nz;
+    }
+    camera.position.copy(walkPos);
+    const cp = Math.cos(pitch);
+    camera.lookAt(
+      walkPos.x + Math.sin(yaw) * cp,
+      walkPos.y + Math.sin(pitch),
+      walkPos.z - Math.cos(yaw) * cp
+    );
+  }
+
+  // 塵の漂い
+  const dp = dustGeo.attributes.position.array;
+  for (let i = 0; i < dustN; i++) {
+    dp[i * 3] += Math.sin(t * 0.21 + dustPhase[i]) * 0.0007;
+    dp[i * 3 + 1] += Math.sin(t * 0.47 + dustPhase[i] * 1.7) * 0.0005;
+    if (dp[i * 3 + 1] < 0.1) dp[i * 3 + 1] = 2.5;
+    if (dp[i * 3 + 1] > 2.6) dp[i * 3 + 1] = 0.12;
+  }
+  dustGeo.attributes.position.needsUpdate = true;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// リサイズ
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ---------- TOGGLE: WALLS / CEILING ----------
+const walls = [
+  wallBack, wallLeft, wrB, wrT, wrL, wrR, wallFront,
+  fT, fB, fL, fR, fC1, fC1b, fC2,
+  artFrame, art,
+  door, dfT, dfL, dfR, knob, bellPanel, bellBtn,
+  rackBoard, hangKey1, hangKey2,
+  savFrame, savArt
+];
+const ceilings = [
+  ceil,
+  pendantCord, pendantShade, pendantBulb, pendantLight,
+  kPendantCord, kPendantShade, kPendantBulb, kPendantLight
+];
+
+let wallsOn = true;
+let ceilOn = true;
+
+document.getElementById('toggleWalls').addEventListener('click', e => {
+  wallsOn = !wallsOn;
+  walls.forEach(w => { w.visible = wallsOn; });
+  e.currentTarget.classList.toggle('off', !wallsOn);
+});
+document.getElementById('toggleCeiling').addEventListener('click', e => {
+  ceilOn = !ceilOn;
+  ceilings.forEach(c => { c.visible = ceilOn; });
+  e.currentTarget.classList.toggle('off', !ceilOn);
+});
+
+// ---------- TOGGLE: WALK / ORBIT ----------
+const hintEl = document.getElementById('hint');
+document.getElementById('toggleMode').addEventListener('click', e => {
+  mode = (mode === 'orbit') ? 'walk' : 'orbit';
+  e.currentTarget.textContent = (mode === 'walk') ? '◇ ORBIT' : '◇ WALK';
+  joyEl.classList.toggle('on', mode === 'walk');
+  if (mode === 'walk') {
+    hintEl.innerHTML = 'stick / wasd · move<br>drag · look<br>tap · touch things';
+    toast('土足厳禁だからな');
+  } else {
+    hintEl.innerHTML = 'drag · look around<br>wheel / pinch · zoom<br>tap · touch things';
+    updateCamera();
+  }
+});
+
+// ---------- SHADOW PASS（家具全部に影を配る。壁と天井は除外） ----------
+const noCast = new Set([ceil, floor, wallBack, wallLeft, wallFront, wrB, wrT, wrL, wrR]);
+scene.traverse(o => {
+  if (o.isMesh && o.material && o.material.isMeshStandardMaterial) {
+    o.receiveShadow = true;
+    if (!noCast.has(o)) o.castShadow = true;
+  }
+});
+
+// 初回自動カメラ移動（導入）
+let introTime = 0;
+const introDuration = 2.5;
+function introAnim() {
+  introTime += 0.016;
+  if (mode !== 'orbit') return;
+  if (introTime < introDuration) {
+    const p = introTime / introDuration;
+    const ease = 1 - Math.pow(1 - p, 3);
+    theta = Math.PI * 0.722 - ease * Math.PI * 0.006;
+    radius = 5.2 - ease * 0.6;
+    updateCamera();
+    requestAnimationFrame(introAnim);
+  }
+}
+introAnim();
+</script>
+</body>
+</html>
