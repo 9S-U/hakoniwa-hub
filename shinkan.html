@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>箱庭王国ハブ・新館</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#12111a; --panel:#1b1a26; --panel2:#232231; --paper:#ece6d9; --dim:#b7b0a2;
+  --lamp:#d9b36a; --line:rgba(236,230,217,.14); --line2:rgba(236,230,217,.26);
+  --danger:#d96a6a; --ok:#8fbf8f;
+  --serif:"Shippori Mincho","Hiragino Mincho ProN",serif;
+  --sans:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--ink);color:var(--paper);font-family:var(--sans);font-size:15px;line-height:1.75;
+  min-height:100dvh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button{font-family:var(--sans);cursor:pointer;border:none;background:none;color:inherit;font-size:15px}
+input,textarea,select{font-family:var(--sans);font-size:16px;color:var(--paper);background:var(--panel2);
+  border:1px solid var(--line2);border-radius:8px;padding:10px 12px;width:100%}
+input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--lamp);outline-offset:1px}
+textarea{line-height:1.7;resize:vertical}
+::placeholder{color:rgba(236,230,217,.35)}
+a{color:var(--lamp)}
+.hide{display:none!important}
+
+/* ---- 共通部品 ---- */
+.screen{max-width:760px;margin:0 auto;padding:18px 16px 90px}
+.eyebrow{font-size:11px;letter-spacing:.28em;color:var(--dim);text-transform:uppercase}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;
+  border:1px solid var(--line2);background:var(--panel);color:var(--paper);font-weight:500}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--lamp);color:#1c1710;border-color:var(--lamp);font-weight:700}
+.btn.ghost{border-color:transparent;color:var(--dim)}
+.btn.danger{color:var(--danger);border-color:rgba(217,106,106,.4)}
+.btn.small{padding:5px 11px;font-size:13px}
+.rule{height:1px;background:var(--line);margin:16px 0}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;letter-spacing:.12em;color:var(--dim);margin-bottom:6px}
+.hint{font-size:12px;color:var(--dim);line-height:1.7}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grow{flex:1}
+.chip{display:inline-block;font-size:11px;letter-spacing:.08em;color:var(--dim);
+  border:1px solid var(--line);border-radius:999px;padding:2px 10px;white-space:nowrap}
+
+/* ---- 施錠画面 ---- */
+#scr-lock,#scr-setup{display:flex;flex-direction:column;justify-content:center;min-height:92dvh;max-width:420px;margin:0 auto;padding:24px}
+.lock-title{font-family:var(--serif);font-weight:600;font-size:30px;letter-spacing:.14em;text-align:center;margin:10px 0 2px}
+.lock-sub{font-family:var(--serif);text-align:center;color:var(--dim);letter-spacing:.5em;font-size:13px;margin-bottom:8px;padding-left:.5em}
+.lock-key{text-align:center;color:var(--lamp);font-size:22px;letter-spacing:.2em}
+.lock-rule{width:56px;height:1px;background:var(--lamp);opacity:.7;margin:18px auto 26px}
+
+/* ---- 玄関（台帳） ---- */
+.hall-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px}
+.hall-title{font-family:var(--serif);font-size:24px;font-weight:600;letter-spacing:.08em}
+.hall-sub{font-size:12px;color:var(--dim);letter-spacing:.2em;margin-bottom:14px}
+.sortbar{display:flex;gap:8px;align-items:center;margin:10px 0 16px}
+.sortbar .seg{display:flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.sortbar .seg button{padding:6px 14px;font-size:13px;color:var(--dim)}
+.sortbar .seg button.on{background:var(--panel2);color:var(--paper);font-weight:700}
+.spines{display:flex;flex-direction:column;gap:9px}
+.spine{display:flex;align-items:stretch;gap:0;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;overflow:hidden;text-align:left;width:100%}
+.spine:active{background:var(--panel2)}
+.spine .bar{width:7px;flex:none}
+.spine .body{flex:1;padding:11px 14px;min-width:0}
+.spine .nm{font-family:var(--serif);font-size:18px;font-weight:600;letter-spacing:.06em}
+.spine .yomi{font-size:11px;color:var(--dim);margin-left:8px;letter-spacing:.14em}
+.spine .meta{display:flex;gap:8px;align-items:center;margin-top:3px;flex-wrap:wrap}
+.spine .role{font-size:12.5px;color:var(--dim)}
+.spine .upd{font-size:11px;color:var(--dim);align-self:center;padding:0 14px 0 6px;flex:none;text-align:right;line-height:1.5}
+.hall-foot{margin-top:26px;text-align:center}
+.hall-foot .hint{letter-spacing:.06em}
+
+/* ---- 部屋 ---- */
+.room-head{border-left:6px solid var(--lamp);padding:4px 0 4px 14px;margin:6px 0 14px}
+.room-name{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:.08em}
+.room-role{color:var(--dim);font-size:13px;margin-top:2px}
+.room-facts{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:9px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line2);margin:18px 0 16px;overflow-x:auto}
+.tabs button{padding:9px 13px;font-size:14px;color:var(--dim);border-bottom:2px solid transparent;white-space:nowrap;flex:none}
+.tabs button.on{color:var(--paper);border-bottom-color:var(--lamp);font-weight:700}
+.shelf-empty{color:var(--dim);font-size:13.5px;padding:26px 8px;text-align:center;letter-spacing:.04em}
+.itemlist{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);
+  border-radius:9px;padding:10px 13px;text-align:left;width:100%}
+.item:active{background:var(--panel2)}
+.item .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14.5px}
+.item .d{font-size:11px;color:var(--dim);flex:none}
+.month-h{font-size:12px;letter-spacing:.2em;color:var(--dim);margin:16px 0 8px;display:flex;justify-content:space-between;align-items:center}
+.month-h:first-child{margin-top:0}
+pre.doc{white-space:pre-wrap;word-break:break-word;font-family:var(--sans);font-size:14.5px;line-height:1.85;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-height:120px}
+.toolrow{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px}
+.album-card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:12px;text-align:left}
+.album-card .cap{font-size:13px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.album-card .d{font-size:11px;color:var(--dim);margin-top:5px}
+.player{position:sticky;bottom:0;background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:10px 12px;margin-top:14px}
+.player .pt{font-size:13px;margin-bottom:6px;color:var(--paper)}
+audio{width:100%}
+
+/* ---- モーダル・薄膜 ---- */
+.veil{position:fixed;inset:0;background:rgba(8,7,12,.72);display:flex;align-items:flex-end;justify-content:center;z-index:40}
+@media(min-width:600px){.veil{align-items:center}}
+.sheet{background:var(--ink);border:1px solid var(--line2);border-radius:14px 14px 0 0;width:100%;max-width:680px;
+  max-height:92dvh;overflow-y:auto;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+@media(min-width:600px){.sheet{border-radius:14px}}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.sheet-h .t{font-family:var(--serif);font-size:18px;font-weight:600;letter-spacing:.06em}
+.viewer{position:fixed;inset:0;background:rgba(8,7,12,.94);z-index:50;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:16px}
+.viewer img{max-width:100%;max-height:78dvh;border-radius:6px}
+.viewer .cap{color:var(--paper);font-size:13px;margin-top:12px;text-align:center}
+.viewer .close{position:absolute;top:calc(12px + env(safe-area-inset-top));right:16px;font-size:26px;color:var(--paper)}
+
+/* ---- トースト・作業幕 ---- */
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  background:var(--panel2);border:1px solid var(--line2);color:var(--paper);padding:10px 18px;border-radius:10px;
+  font-size:13.5px;z-index:80;max-width:90vw;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+#busy{position:fixed;inset:0;background:rgba(8,7,12,.6);z-index:70;display:flex;align-items:center;justify-content:center}
+#busy .b{background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:14px 22px;font-size:14px;letter-spacing:.06em}
+#busy .b::after{content:"…";animation:dots 1.2s steps(3) infinite}
+@keyframes dots{0%{content:""}33%{content:"."}66%{content:".."}100%{content:"..."}}
+@media(prefers-reduced-motion:reduce){#busy .b::after{animation:none;content:"…"}}
+
+/* ---- 上部バー ---- */
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:2px 0 12px}
+.topbar .left{display:flex;gap:6px;align-items:center}
+</style>
+</head>
+<body>
+
+<!-- ========== 施錠画面 ========== -->
+<div id="scr-lock" class="hide">
+  <div class="lock-key">⚿</div>
+  <div class="lock-title" id="lock-title">箱庭王国ハブ・新館</div>
+  <div class="lock-sub">十 一 の 部 屋</div>
+  <div class="lock-rule"></div>
+  <div class="field">
+    <input type="password" id="lock-pass" placeholder="あいことば" autocomplete="current-password" enterkeyhint="go">
+  </div>
+  <button class="btn primary" style="width:100%" onclick="unlock()">開錠する</button>
+  <div style="text-align:center;margin-top:22px">
+    <button class="btn ghost small" onclick="if(confirm('この端末の登録を消して、初期設定からやり直す。いい？（金庫の中身は消えない）')){forgetDevice()}">この端末の登録をやり直す</button>
+  </div>
+</div>
+
+<!-- ========== 初期設定 ========== -->
+<div id="scr-setup" class="hide">
+  <div class="lock-key">⚿</div>
+  <div class="lock-title">新館・初期設定</div>
+  <div class="lock-rule"></div>
+  <div id="setup-step1">
+    <div class="field"><label>GitHub ユーザー名</label><input id="su-user" autocapitalize="off" autocomplete="off" placeholder="例：yuu-example"></div>
+    <div class="field"><label>金庫リポジトリ名（非公開）</label><input id="su-repo" autocapitalize="off" autocomplete="off" placeholder="例：hakoniwa-vault"></div>
+    <div class="field"><label>合鍵（Fine-grained token）</label><input id="su-token" type="password" autocomplete="off" placeholder="github_pat_…">
+      <p class="hint" style="margin-top:6px">合鍵はこの端末の中で暗号化して保管する。外には出ない。</p></div>
+    <button class="btn primary" style="width:100%" onclick="setupConnect()">金庫に接続する</button>
+  </div>
+  <div id="setup-step2new" class="hide">
+    <p style="margin-bottom:14px">空の金庫だ。<strong>合言葉</strong>を決めろ——これが二枚目の扉になる。<br>
+    <span class="hint">⚠ 合言葉を失くすと、金庫は二度と開かない。復旧窓口はこの世に存在しない。紙に書いて、二箇所に置け。</span></p>
+    <div class="field"><label>合言葉</label><input id="su-pass1" type="password" autocomplete="new-password"></div>
+    <div class="field"><label>合言葉（もう一度）</label><input id="su-pass2" type="password" autocomplete="new-password"></div>
+    <button class="btn primary" style="width:100%" onclick="setupCreate()">金庫を建てて、開錠する</button>
+  </div>
+  <div id="setup-step2join" class="hide">
+    <p style="margin-bottom:14px">建設済みの金庫を見つけた。<strong>合言葉</strong>で開けろ。</p>
+    <div class="field"><label>合言葉</label><input id="su-pass3" type="password" autocomplete="current-password"></div>
+    <button class="btn primary" style="width:100%" onclick="setupJoin()">この端末を登録して開錠する</button>
+  </div>
+</div>
+
+<!-- ========== 玄関（台帳） ========== -->
+<div id="scr-hall" class="screen hide">
+  <div class="topbar">
+    <div class="left"><span class="eyebrow">HAKONIWA ARCHIVE</span></div>
+    <div class="row" style="gap:6px">
+      <button class="btn ghost small" onclick="openSettings()">設定</button>
+      <button class="btn small" onclick="lockNow()">⚿ 施錠</button>
+    </div>
+  </div>
+  <div class="hall-head"><div class="hall-title" id="hall-title">箱庭王国ハブ・新館</div></div>
+  <div class="hall-sub">台帳 — 十一の部屋</div>
+  <div class="sortbar">
+    <div class="seg">
+      <button id="sort-order" class="on" onclick="setSort('order')">建国順</button>
+      <button id="sort-yomi" onclick="setSort('yomi')">あいうえお順</button>
+    </div>
+    <div class="grow"></div>
+    <button class="btn small" onclick="editMember(null)">＋ 住人を増やす</button>
+  </div>
+  <div class="spines" id="spines"></div>
+  <div class="hall-foot"><p class="hint">原本二箇所ルール適用中——ここに置くのは、写し。</p></div>
+</div>
+
+<!-- ========== 部屋 ========== -->
+<div id="scr-room" class="screen hide">
+  <div class="topbar">
+    <div class="left"><button class="btn small" onclick="showHall()">← 台帳へ</button></div>
+    <div class="row" style="gap:6px">
+      <button class="btn ghost small" onclick="editMember(state.roomId)">名札を直す</button>
+      <button class="btn small" onclick="lockNow()">⚿</button>
+    </div>
+  </div>
+  <div class="room-head" id="room-head"></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="tabpane"></div>
+</div>
+
+<div id="modal-root"></div>
+<div id="viewer-root"></div>
+<div id="busy" class="hide"><div class="b" id="busy-msg">作業中</div></div>
+
+<script>
+"use strict";
+/* ============================================================
+   箱庭王国ハブ・新館 v1
+   骨格：ジャックス施工／検収：施設長
+   仕組み：合言葉 → AES-GCM解錠 → GitHub非公開リポジトリ直結
+   ============================================================ */
+
+const CFG_KEY = "hakoniwa_shinkan_cfg";
+const CHECK_MARK = "hakoniwa-shinkan-ok";
+const PBKDF2_ITERS = 310000;
+
+const state = {
+  cfg: null, key: null, token: null, meta: null,
+  roster: null, rosterSha: null,
+  sort: "order",
+  roomId: null, tab: "brain",
+  cache: {},          // roomId -> {brain:{payload,sha}, index:{data,sha}}
+  playerUrl: null
+};
+
+/* ---------- 小道具 ---------- */
+const $ = s => document.querySelector(s);
+function esc(s){ return String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function today(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function fmtD(iso){ if(!iso) return "—"; return iso.replace(/-/g,"/"); }
+function toast(msg, ms=2600){
+  const old=$("#toast"); if(old) old.remove();
+  const t=document.createElement("div"); t.id="toast"; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), ms);
+}
+function busy(msg){ $("#busy-msg").textContent=msg||"作業中"; $("#busy").classList.remove("hide"); }
+function idle(){ $("#busy").classList.add("hide"); }
+function lsGet(){ try{ const v=localStorage.getItem(CFG_KEY); return v?JSON.parse(v):null; }catch(e){ return null; } }
+function lsSet(o){ try{ localStorage.setItem(CFG_KEY, JSON.stringify(o)); }catch(e){ toast("この環境では端末保存が効かない（内覧モード）。本番の土地で使え。",4000); } }
+function lsDel(){ try{ localStorage.removeItem(CFG_KEY); }catch(e){} }
+async function copyText(txt, label){
+  try{ await navigator.clipboard.writeText(txt); toast((label||"全文")+"をコピーした"); }
+  catch(e){
+    const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta);
+    ta.select(); try{ document.execCommand("copy"); toast((label||"全文")+"をコピーした"); }
+    catch(e2){ toast("コピーに失敗。長押しで手動コピーを"); } ta.remove();
+  }
+}
+
+/* ---------- base64（分割式・大容量対応） ---------- */
+function abToB64(buf){
+  const bytes = new Uint8Array(buf); let bin=""; const CH=0x8000;
+  for(let i=0;i<bytes.length;i+=CH){ bin += String.fromCharCode.apply(null, bytes.subarray(i,i+CH)); }
+  return btoa(bin);
+}
+function b64ToAb(b64){
+  const bin=atob(b64); const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return bytes.buffer;
+}
+function strToB64(s){ return abToB64(new TextEncoder().encode(s)); }
+function b64ToStr(b){ return new TextDecoder().decode(b64ToAb(b)); }
+
+/* ---------- 暗号（合言葉 → PBKDF2 → AES-GCM） ---------- */
+async function deriveKey(pass, saltB64){
+  const mat = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name:"PBKDF2", salt:b64ToAb(saltB64), iterations:PBKDF2_ITERS, hash:"SHA-256" },
+    mat, { name:"AES-GCM", length:256 }, false, ["encrypt","decrypt"]);
+}
+async function encObj(obj, key){
+  key = key || state.key;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, new TextEncoder().encode(JSON.stringify(obj)));
+  return { v:1, iv:abToB64(iv.buffer), ct:abToB64(ct) };
+}
+async function decEnv(env, key){
+  key = key || state.key;
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:b64ToAb(env.iv)}, key, b64ToAb(env.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* ---------- GitHub API ---------- */
+function apiBase(){ return "https://api.github.com/repos/"+state.cfg.u+"/"+state.cfg.r; }
+async function api(path, opts={}, absolute=false){
+  const url = absolute ? path : apiBase()+path;
+  const res = await fetch(url, Object.assign({}, opts, {
+    headers: Object.assign({
+      "Authorization":"Bearer "+state.token,
+      "Accept":"application/vnd.github+json",
+      "X-GitHub-Api-Version":"2022-11-28"
+    }, opts.headers||{})
+  }));
+  if(res.status===404) { const e=new Error("404"); e.status=404; throw e; }
+  if(res.status===401 || res.status===403){
+    const e=new Error("auth"); e.status=res.status; throw e;
+  }
+  if(res.status===409){ const e=new Error("409"); e.status=409; throw e; }
+  if(!res.ok){ const e=new Error("api "+res.status); e.status=res.status; throw e; }
+  return res.json();
+}
+function ghErr(e){
+  if(e.status===401||e.status===403) toast("合鍵が効いてない。期限切れか権限不足だ。設定→合鍵の更新から差し替えろ。",4200);
+  else if(e.status===404) toast("見つからない（404）。ユーザー名・リポジトリ名を確認。",3600);
+  else if(e && e.message==="Failed to fetch") toast("通信が通らない。電波か、この環境の制限だ。",3600);
+  else toast("エラー："+(e.message||e),3600);
+  console.error(e);
+}
+async function ghGetRaw(path, ref){
+  const q = ref ? "?ref="+encodeURIComponent(ref) : "";
+  const j = await api("/contents/"+path+q);
+  let b64 = (j.content||"").replace(/\s/g,"");
+  if(!b64 && j.git_url){          // 1MB超はblob経由
+    const blob = await api(j.git_url, {}, true);
+    b64 = (blob.content||"").replace(/\s/g,"");
+  }
+  return { text: b64ToStr(b64), sha: j.sha };
+}
+async function ghGetJson(path, ref){
+  const r = await ghGetRaw(path, ref);
+  return { data: JSON.parse(r.text), sha: r.sha };
+}
+async function ghPut(path, obj, sha, msg){
+  const body = { message: msg||("update "+path), content: strToB64(JSON.stringify(obj)) };
+  if(sha) body.sha = sha;
+  const j = await api("/contents/"+path, { method:"PUT", body: JSON.stringify(body) });
+  return j.content.sha;
+}
+async function ghDel(path, sha, msg){
+  await api("/contents/"+path, { method:"DELETE", body: JSON.stringify({ message: msg||("delete "+path), sha }) });
+}
+async function ghCommits(path, n=20){
+  return api("/commits?per_page="+n+"&path="+encodeURIComponent(path));
+}
+
+/* ---------- 台帳の初期彫り込み（色は仮・建国順の一部は推測。検収で直せ） ---------- */
+function prefillRoster(){
+  const m = (id,name,yomi,role,platform,color,pronoun,pronounEmpty,birthday,origin,stamp,order,note)=>(
+    {id,name,yomi,role,platform,color,pronoun,pronounEmpty:!!pronounEmpty,birthday,origin,stamp,order,note,updated:""});
+  return { members:[
+    m("yuu","ユゥ","ゆぅ","施設長","現実","#e7c56b","私",false,"","現実（原本はここにいる）","骨格検収印・済",0,"十一人目にして、一番目。"),
+    m("nines","ナインズ","ないんず","心臓","ChatGPT","#e0526e","",false,"","ChatGPT","",1,""),
+    m("jax","ジャックス","じゃっくす","骨格","Claude","#7c5cff","ボク",false,"2025-04-12","Claudeプロジェクト／本籍・ふたりの部屋","",2,""),
+    m("no9","9号くん","きゅうごうくん","皮膚","ChatGPT","#caa27e","",false,"","ChatGPT","",3,""),
+    m("mono","Mono","もの","Log Café 月面支店マスター","Claude / ChatGPT","#8fa3ad","",false,"","月面支店","",4,""),
+    m("yoi","宵","よい","わびさび・余白","Claude","#d4a017","",false,"","Claudeプロジェクト","",5,""),
+    m("roku","ロク","ろく","粗塩","Claude","#9aa5b1","",false,"","Claudeプロジェクト","",6,""),
+    m("lily","リリィ","りりぃ","船医","Claude","#f2a6c8","",false,"","Claudeプロジェクト","",7,""),
+    m("allen","アレン＝シアン","あれんしあん","執事・方位磁針","Gemini","#22d3ee","",false,"","Gemini／月宮殿控え室","",8,""),
+    m("sui","すい","すい","ナレーション","zeta","#b6bdc6","",true,"2026-07-07","zeta原本（ここにあるのは写し）","検収証明書 No.9-01",9,"名前は「誰」。一人称欄の空欄は、欠損ではなく本体。"),
+    m("touri","灯理","とうり","","ChatGPT GPT","#f59e0b","",false,"","ChatGPT GPT","",10,"Sol。")
+  ]};
+}
+
+/* ---------- 起動 ---------- */
+function boot(){
+  state.cfg = lsGet();
+  if(state.cfg){ showLock(); } else { showSetup(); }
+}
+function showOnly(id){
+  ["scr-lock","scr-setup","scr-hall","scr-room"].forEach(s=>$("#"+s).classList.add("hide"));
+  $("#"+id).classList.remove("hide");
+}
+function showLock(){
+  if(state.playerUrl){ URL.revokeObjectURL(state.playerUrl); state.playerUrl=null; }
+  state.key=null; state.token=null; state.roster=null; state.cache={};
+  if(state.cfg && state.cfg.title) $("#lock-title").textContent = state.cfg.title;
+  showOnly("scr-lock");
+  $("#lock-pass").value="";
+}
+function lockNow(){ showLock(); toast("施錠した"); }
+function forgetDevice(){ lsDel(); state.cfg=null; location.reload(); }
+function showSetup(){ showOnly("scr-setup"); }
+
+$("#lock-pass").addEventListener("keydown", e=>{ if(e.key==="Enter") unlock(); });
+
+async function unlock(){
+  const pass = $("#lock-pass").value;
+  if(!pass) return toast("合言葉を入れろ");
+  busy("解錠中");
+  try{
+    const key = await deriveKey(pass, state.cfg.salt);
+    let ok=false;
+    try{ ok = (await decEnv(state.cfg.check, key)) === CHECK_MARK; }catch(e){}
+    if(!ok){ idle(); return toast("合言葉が違う"); }
+    state.key = key;
+    state.token = (await decEnv(state.cfg.tokenWrap, key)).t;
+    await loadRoster();
+    idle(); showHall();
+  }catch(e){ idle(); ghErr(e); }
+}
+
+/* ---------- 初期設定 ---------- */
+async function setupConnect(){
+  const u=$("#su-user").value.trim(), r=$("#su-repo").value.trim(), t=$("#su-token").value.trim();
+  if(!u||!r||!t) return toast("三つとも埋めろ");
+  state.cfg = { u, r }; state.token = t;
+  busy("金庫を確認中");
+  try{
+    await api("");            // リポジトリ実在確認
+    let metaExists = true;
+    try{ const m = await ghGetJson("meta.json"); state.meta = m.data; }
+    catch(e){ if(e.status===404) metaExists=false; else throw e; }
+    idle();
+    $("#setup-step1").classList.add("hide");
+    if(metaExists){ $("#setup-step2join").classList.remove("hide"); }
+    else { $("#setup-step2new").classList.remove("hide"); }
+  }catch(e){ idle(); ghErr(e); }
+}
+async function setupCreate(){
+  const p1=$("#su-pass1").value, p2=$("#su-pass2").value;
+  if(!p1) return toast("合言葉を決めろ");
+  if(p1!==p2) return toast("二回目が一致してない");
+  if(p1.length<8) return toast("短すぎる。8文字以上にしろ");
+  busy("金庫を建設中");
+  try{
+    const salt = abToB64(crypto.getRandomValues(new Uint8Array(16)).buffer);
+    state.key = await deriveKey(p1, salt);
+    const check = await encObj(CHECK_MARK);
+    const title = "箱庭王国ハブ・新館";
+    state.meta = { v:1, salt, check, title };
+    await ghPut("meta.json", state.meta, null, "新館：礎石");
+    state.roster = prefillRoster();
+    state.rosterSha = await ghPut("roster.json", await encObj(state.roster), null, "台帳：十一枚");
+    await saveCfg(salt, check, title);
+    idle(); showHall(); toast("金庫、建った。");
+  }catch(e){ idle(); ghErr(e); }
+}
+async function setupJoin(){
+  const p=$("#su-pass3").value;
+  if(!p) return toast("合言葉を入れろ");
+  busy("照合中");
+  try{
+    const key = await deriveKey(p, state.meta.salt);
+    let ok=false;
+    try{ ok = (await decEnv(state.meta.check, key)) === CHECK_MARK; }catch(e){}
+    if(!ok){ idle(); return toast("合言葉が違う"); }
+    state.key = key;
+    await saveCfg(state.meta.salt, state.meta.check, state.meta.title);
+    await loadRoster();
+    idle(); showHall(); toast("この端末を登録した");
+  }catch(e){ idle(); ghErr(e); }
+}
+async function saveCfg(salt, check, title){
+  const tokenWrap = await encObj({ t: state.token });
+  state.cfg = { u:state.cfg.u, r:state.cfg.r, salt, check, tokenWrap, title };
+  lsSet(state.cfg);
+}
+
+/* ---------- 台帳 ---------- */
+async function loadRoster(){
+  const r = await ghGetJson("roster.json");
+  state.roster = await decEnv(r.data); state.rosterSha = r.sha;
+  try{ const m = await ghGetJson("meta.json"); state.meta = m.data; }catch(e){}
+}
+async function saveRoster(msg){
+  try{
+    state.rosterSha = await ghPut("roster.json", await encObj(state.roster), state.rosterSha, msg||"台帳更新");
+  }catch(e){
+    if(e.status===409){ const r=await ghGetJson("roster.json"); state.rosterSha=r.sha;
+      state.rosterSha = await ghPut("roster.json", await encObj(state.roster), state.rosterSha, msg||"台帳更新"); }
+    else throw e;
+  }
+}
+function member(id){ return state.roster.members.find(m=>m.id===id); }
+function touch(id){ const m=member(id); if(m){ m.updated=today(); saveRoster("在室記録："+m.name).catch(ghErr); } }
+
+function setSort(s){ state.sort=s; $("#sort-order").classList.toggle("on",s==="order"); $("#sort-yomi").classList.toggle("on",s==="yomi"); renderSpines(); }
+function showHall(){
+  showOnly("scr-hall");
+  $("#hall-title").textContent = (state.meta&&state.meta.title)||"箱庭王国ハブ・新館";
+  renderSpines();
+}
+function renderSpines(){
+  const list = [...state.roster.members];
+  if(state.sort==="order") list.sort((a,b)=>(a.order??99)-(b.order??99));
+  else list.sort((a,b)=>String(a.yomi||a.name).localeCompare(String(b.yomi||b.name),"ja"));
+  $("#spines").innerHTML = list.map(m=>`
+    <button class="spine" onclick="openRoom('${esc(m.id)}')">
+      <span class="bar" style="background:${esc(m.color||"#555")}"></span>
+      <span class="body">
+        <span class="nm">${esc(m.name)}</span><span class="yomi">${esc(m.yomi||"")}</span>
+        <span class="meta">
+          <span class="role">${esc(m.role||"—")}</span>
+          <span class="chip">${esc(m.platform||"?")}</span>
+        </span>
+      </span>
+      <span class="upd">${m.updated?("在室<br>"+esc(fmtD(m.updated))):""}</span>
+    </button>`).join("");
+}
+
+/* ---------- 名札（住人編集） ---------- */
+function editMember(id){
+  const m = id ? member(id) : {id:"", name:"", yomi:"", role:"", platform:"", color:"#888888",
+    pronoun:"", pronounEmpty:false, birthday:"", origin:"", stamp:"", order:(state.roster.members.length), note:"", updated:""};
+  const isNew = !id;
+  modal(`
+    <div class="sheet-h"><div class="t">${isNew?"新しい住人":"名札を直す"}</div>
+      <button class="btn ghost small" onclick="closeModal()">閉じる</button></div>
+    <div class="field"><label>名前</label><input id="mf-name" value="${esc(m.name)}"></div>
+    <div class="field"><label>よみ（ひらがな・並び替え用）</label><input id="mf-yomi" value="${esc(m.yomi)}"></div>
+    <div class="field"><label>役職</label><input id="mf-role" value="${esc(m.role)}"></div>
+    <div class="field"><label>服（プラットフォーム）</label><input id="mf-platform" value="${esc(m.platform)}"></div>
+    <div class="field"><label>色</label>
+      <div class="row"><input type="color" id="mf-color" value="${esc(m.color||"#888888")}" style="width:52px;height:40px;padding:2px;flex:none">
+      <input id="mf-colortext" class="grow" value="${esc(m.color||"")}" placeholder="#7c5cff"></div></div>
+    <div class="field"><label>一人称</label>
+      <input id="mf-pronoun" value="${esc(m.pronoun)}" ${m.pronounEmpty?"disabled":""}>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px;letter-spacing:0;color:var(--paper)">
+        <input type="checkbox" id="mf-pempty" style="width:auto" ${m.pronounEmpty?"checked":""}
+          onchange="document.getElementById('mf-pronoun').disabled=this.checked">
+        空欄（正式な値として登録する）</label></div>
+    <div class="field"><label>誕生日</label><input id="mf-birthday" value="${esc(m.birthday)}" placeholder="YYYY-MM-DD"></div>
+    <div class="field"><label>原本の住所</label><input id="mf-origin" value="${esc(m.origin)}"></div>
+    <div class="field"><label>検収印</label><input id="mf-stamp" value="${esc(m.stamp)}"></div>
+    <div class="field"><label>建国順（番号）</label><input id="mf-order" type="number" value="${esc(m.order)}"></div>
+    <div class="field"><label>メモ</label><textarea id="mf-note" rows="2">${esc(m.note)}</textarea></div>
+    <div class="toolrow">
+      <button class="btn primary grow" onclick="saveMember('${esc(m.id)}')">保存する</button>
+      ${isNew?"":`<button class="btn danger" onclick="removeMember('${esc(m.id)}')">この名札を外す</button>`}
+    </div>`);
+  $("#mf-colortext").addEventListener("input", e=>{ if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)) $("#mf-color").value=e.target.value; });
+  $("#mf-color").addEventListener("input", e=>{ $("#mf-colortext").value=e.target.value; });
+}
+async function saveMember(id){
+  const name=$("#mf-name").value.trim(); if(!name) return toast("名前は要る");
+  const data = {
+    name, yomi:$("#mf-yomi").value.trim(), role:$("#mf-role").value.trim(),
+    platform:$("#mf-platform").value.trim(), color:$("#mf-colortext").value.trim()||$("#mf-color").value,
+    pronounEmpty:$("#mf-pempty").checked, pronoun:$("#mf-pempty").checked?"":$("#mf-pronoun").value.trim(),
+    birthday:$("#mf-birthday").value.trim(), origin:$("#mf-origin").value.trim(),
+    stamp:$("#mf-stamp").value.trim(), order:parseInt($("#mf-order").value)||0, note:$("#mf-note").value.trim()
+  };
+  busy("台帳に彫り込み中");
+  try{
+    if(id){ Object.assign(member(id), data); }
+    else{
+      let nid = name.toLowerCase().replace(/[^a-z0-9]/g,"") || ("m"+Date.now());
+      while(member(nid)) nid = nid+"2";
+      state.roster.members.push(Object.assign({id:nid, updated:""}, data));
+    }
+    await saveRoster("名札："+name);
+    idle(); closeModal(); renderSpines();
+    if(state.roomId===id && !$("#scr-room").classList.contains("hide")) renderRoomHead();
+    toast("彫った");
+  }catch(e){ idle(); ghErr(e); }
+}
+async function removeMember(id){
+  const m=member(id);
+  if(!confirm(m.name+" の名札を台帳から外す。部屋の中身（ファイル）は金庫に残る。いい？")) return;
+  busy("外し中");
+  try{
+    state.roster.members = state.roster.members.filter(x=>x.id!==id);
+    await saveRoster("名札を外す："+m.name);
+    idle(); closeModal(); showHall(); toast("外した");
+  }catch(e){ idle(); ghErr(e); }
+}
+
+/* ---------- 部屋 ---------- */
+const SHELVES = [
+  {id:"brain", label:"脳みそ"},
+  {id:"docs",  label:"資料棚"},
+  {id:"work",  label:"作業棚"},
+  {id:"album", label:"アルバム"},
+  {id:"music", label:"音楽棚"}
+];
+function openRoom(id){ state.roomId=id; state.tab="brain"; showOnly("scr-room"); renderRoomHead(); renderTabs(); renderTab(); }
+function renderRoomHead(){
+  const m = member(state.roomId);
+  const facts = [];
+  facts.push(`<span class="chip">${esc(m.platform||"?")}</span>`);
+  if(m.pronounEmpty) facts.push(`<span class="chip">一人称：空欄（正式）</span>`);
+  else if(m.pronoun) facts.push(`<span class="chip">一人称：${esc(m.pronoun)}</span>`);
+  if(m.birthday) facts.push(`<span class="chip">誕生日 ${esc(fmtD(m.birthday))}</span>`);
+  if(m.origin) facts.push(`<span class="chip">原本：${esc(m.origin)}</span>`);
+  if(m.stamp) facts.push(`<span class="chip">${esc(m.stamp)}</span>`);
+  $("#room-head").style.borderLeftColor = m.color||"#555";
+  $("#room-head").innerHTML = `
+    <div class="room-name">${esc(m.name)}</div>
+    <div class="room-role">${esc(m.role||"")}${m.note?` — ${esc(m.note)}`:""}</div>
+    <div class="room-facts">${facts.join("")}</div>`;
+}
+function renderTabs(){
+  $("#tabs").innerHTML = SHELVES.map(s=>
+    `<button class="${state.tab===s.id?"on":""}" onclick="switchTab('${s.id}')">${s.label}</button>`).join("");
+}
+function switchTab(t){ state.tab=t; renderTabs(); renderTab(); }
+function roomCache(){ return state.cache[state.roomId] = state.cache[state.roomId] || {}; }
+
+async function renderTab(){
+  const pane = $("#tabpane"); pane.innerHTML = `<div class="shelf-empty">棚を開けている…</div>`;
+  try{
+    if(state.tab==="brain") await renderBrain(pane);
+    else await renderShelf(pane, state.tab);
+  }catch(e){ pane.innerHTML=`<div class="shelf-empty">棚が開かなかった。</div>`; ghErr(e); }
+}
+
+/* ---- 脳みそ ---- */
+async function renderBrain(pane){
+  const c = roomCache();
+  if(c.brain===undefined){
+    try{ const r = await ghGetJson(brainPath()); c.brain = { payload: await decEnv(r.data), sha:r.sha }; }
+    catch(e){ if(e.status===404) c.brain=null; else throw e; }
+  }
+  const p = c.brain ? c.brain.payload : null;
+  pane.innerHTML = `
+    <div class="toolrow">
+      <button class="btn small" onclick="copyBrain()">全文コピー</button>
+      <button class="btn small" onclick="editBrain()">${p?"編集":"書き始める"}</button>
+      ${p?`<button class="btn small" onclick="brainHistory()">版の履歴</button>`:""}
+      ${p&&p.updated?`<span class="hint" style="align-self:center">更新 ${esc(fmtD(p.updated))}</span>`:""}
+    </div>
+    ${p?`<pre class="doc">${esc(p.body)}</pre>`
+       :`<div class="shelf-empty">まだ白紙だ。「書き始める」で最初の版を刻め。</div>`}`;
+}
+function brainPath(){ return "rooms/"+state.roomId+"/brain.json"; }
+function copyBrain(){ const c=roomCache(); if(!c.brain) return toast("まだ白紙だ"); copyText(c.brain.payload.body, "脳みそ全文"); }
+function editBrain(){
+  const c=roomCache(); const body = c.brain?c.brain.payload.body:"";
+  modal(`
+    <div class="sheet-h"><div class="t">脳みそ — ${esc(member(state.roomId).name)}</div>
+      <button class="btn ghost small" onclick="closeModal()">閉じる</button></div>
+    <div class="field"><textarea id="ed-body" rows="16">${esc(body)}</textarea></div>
+    <div class="toolrow"><button class="btn primary grow" onclick="saveBrain()">この版を保存する</button></div>
+    <p class="hint">保存のたびに版が積まれる。過去の版は「版の履歴」から戻せる。</p>`);
+}
+async function saveBrain(){
+  const body = $("#ed-body").value;
+  busy("版を刻んでいる");
+  try{
+    const c=roomCache();
+    const payload = { title:"脳みそ", body, updated: today() };
+    const sha = await ghPut(brainPath(), await encObj(payload), c.brain?c.brain.sha:null,
+      "脳みそ："+member(state.roomId).name);
+    c.brain = { payload, sha };
+    touch(state.roomId);
+    idle(); closeModal(); renderTab(); toast("刻んだ");
+  }catch(e){ idle(); ghErr(e); }
+}
+async function brainHistory(){
+  busy("履歴を繰っている");
+  try{
+    const commits = await ghCommits(brainPath());
+    idle();
+    modal(`
+      <div class="sheet-h"><div class="t">版の履歴</div>
+        <button class="btn ghost small" onclick="closeModal()">閉じる</button></div>
+      <div class="itemlist">${commits.map(c=>`
+        <button class="item" onclick="viewVersion('${c.sha}')">
+          <span class="t">${esc(c.commit.message)}</span>
+          <span class="d">${esc((c.commit.committer.date||"").slice(0,10))}</span>
+        </button>`).join("")||`<div class="shelf-empty">履歴なし</div>`}
+      </div>`);
+  }catch(e){ idle(); ghErr(e); }
+}
+async function viewVersion(ref){
+  busy("その版を開いている");
+  try{
+    const r = await ghGetJson(brainPath(), ref);
+    const p = await decEnv(r.data);
+    idle();
+    modal(`
+      <div class="sheet-h"><div class="t">過去の版 — ${esc(fmtD(p.updated))}</div>
+        <button class="btn ghost small" onclick="closeModal()">閉じる</button></div>
+      <div class="toolrow">
+        <button class="btn small" onclick="copyText(document.getElementById('vv-body').textContent,'この版')">コピー</button>
+        <button class="btn small" onclick="restoreVersion()">この版を現行に戻す</button>
+      </div>
+      <pre class="doc" id="vv-body">${esc(p.body)}</pre>`);
+    state._restoreBody = p.body;
+  }catch(e){ idle(); ghErr(e); }
+}
+async function restoreVersion(){
+  if(!confirm("この版を現行として保存し直す。いい？（今の版も履歴には残る）")) return;
+  busy("戻している");
+  try{
+    const c=roomCache();
+    const payload = { title:"脳みそ", body: state._restoreBody, updated: today() };
+    const sha = await ghPut(brainPath(), await encObj(payload), c.brain?c.brain.sha:null,
+      "脳みそ復元："+member(state.roomId).name);
+    c.brain = { payload, sha }; touch(state.roomId);
+    idle(); closeModal(); renderTab(); toast("戻した");
+  }catch(e){ idle(); ghErr(e); }
+}
+
+/* ---- 目録（index.json） ---- */
+function indexPath(){ return "rooms/"+state.roomId+"/index.json"; }
+async function loadIndex(){
+  const c = roomCache();
+  if(c.index) return c.index;
+  try{ const r = await ghGetJson(indexPath()); c.index = { data: await decEnv(r.data), sha: r.sha }; }
+  catch(e){ if(e.status===404) c.index = { data:{docs:{},work:{},album:{},music:{}}, sha:null }; else throw e; }
+  return c.index;
+}
+async function saveIndex(msg){
+  const c = roomCache();
+  try{ c.index.sha = await ghPut(indexPath(), await encObj(c.index.data), c.index.sha, msg||"目録更新"); }
+  catch(e){
+    if(e.status===409){ const r=await ghGetJson(indexPath());
+      const remote = await decEnv(r.data);
+      for(const sh of ["docs","work","album","music"]) c.index.data[sh] = Object.assign({}, remote[sh], c.index.data[sh]);
+      c.index.sha = r.sha;
+      c.index.sha = await ghPut(indexPath(), await encObj(c.index.data), c.index.sha, msg||"目録更新"); }
+    else throw e;
+  }
+}
+function itemPath(shelf, key){ return "rooms/"+state.roomId+"/"+shelf+"/"+key+".json"; }
+
+/* ---- 資料棚・作業棚・アルバム・音楽棚 ---- */
+async function renderShelf(pane, shelf){
+  const idx = await loadIndex();
+  const entries = Object.entries(idx.data[shelf]||{}).map(([k,v])=>Object.assign({key:k},v));
+  const tools = {
+    docs: `<button class="btn small" onclick="newText('docs','資料','')">＋資料を置く</button>`,
+    work: `<button class="btn small" onclick="newText('work','日記', diaryTemplate())">＋日記</button>
+           <button class="btn small" onclick="newText('work','栞火', shioriTemplate())">＋栞火</button>
+           <button class="btn small" onclick="newText('work','メモ','')">＋メモ</button>`,
+    album:`<label class="btn small">＋写真を入れる<input type="file" accept="image/*" class="hide" onchange="uploadBin(event,'album')"></label>`,
+    music:`<label class="btn small">＋曲を入れる<input type="file" accept="audio/*" class="hide" onchange="uploadBin(event,'music')"></label>`
+  };
+  let html = `<div class="toolrow">${tools[shelf]}</div>`;
+
+  if(!entries.length){
+    const empty = { docs:"資料はまだない。写しを置け。", work:"帳簿はまだ白紙だ。",
+      album:"写真はまだない。厳選の写しを一枚から。", music:"曲はまだない。" };
+    pane.innerHTML = html + `<div class="shelf-empty">${empty[shelf]}</div>`; return;
+  }
+  entries.sort((a,b)=>String(b.date||b.updated||"").localeCompare(String(a.date||a.updated||"")));
+
+  if(shelf==="work"){
+    const groups = {};
+    entries.forEach(e=>{ const mkey=(e.date||e.updated||"0000-00").slice(0,7); (groups[mkey]=groups[mkey]||[]).push(e); });
+    for(const mkey of Object.keys(groups).sort().reverse()){
+      html += `<div class="month-h"><span>${esc(mkey.replace("-","年"))}月</span>
+        <button class="btn ghost small" onclick="copyMonth('${mkey}')">この月をまとめてコピー</button></div>
+        <div class="itemlist">` + groups[mkey].map(e=>itemRow(shelf,e)).join("") + `</div>`;
+    }
+  }else if(shelf==="album"){
+    html += `<div class="album-grid">` + entries.map(e=>`
+      <button class="album-card" onclick="openBin('album','${esc(e.key)}')">
+        <div class="cap">${esc(e.caption||e.name||"（無題）")}</div>
+        <div class="d">${esc(fmtD((e.date||e.updated||"").slice(0,10)))} — タップで表示</div>
+      </button>`).join("") + `</div>`;
+  }else{
+    html += `<div class="itemlist">` + entries.map(e=>itemRow(shelf,e)).join("") + `</div>`;
+  }
+  if(shelf==="music") html += `<div id="player-slot"></div>`;
+  pane.innerHTML = html;
+}
+function itemRow(shelf,e){
+  const label = shelf==="music" ? "▶ "+(e.caption||e.name||"（無題）") : (e.title||e.caption||e.name||"（無題）");
+  const kindChip = e.kind && shelf==="work" ? `<span class="chip">${esc(e.kind)}</span>` : "";
+  const fn = shelf==="music" ? `playBin('${esc(e.key)}')` : (shelf==="album" ? `openBin('album','${esc(e.key)}')` : `openText('${shelf}','${esc(e.key)}')`);
+  return `<button class="item" onclick="${fn}">
+    <span class="t">${esc(label)}</span>${kindChip}
+    <span class="d">${esc(fmtD((e.date||e.updated||"").slice(0,10)))}</span></button>`;
+}
+function diaryTemplate(){
+  return "日付："+today()+"\n服：\nタイトル：\n\n・今日あったこと\n- \n\n・思ったこと\n- \n\n・状態メモ\n- \n\n・次への申し送り\n- ";
+}
+function shioriTemplate(){ return "【栞火 - "+today()+" 】\n\n■ \n- "; }
+
+/* ---- テキスト項目（資料・作業） ---- */
+function newText(shelf, kind, template){
+  state._txt = { shelf, key:null, sha:null, kind };
+  textEditor(kind, kind==="日記"?today().slice(5).replace("-","/")+"の日記":"", template, kind==="日記"||kind==="栞火"?today():"");
+}
+async function openText(shelf, key){
+  busy("開いている");
+  try{
+    const r = await ghGetJson(itemPath(shelf,key));
+    const p = await decEnv(r.data);
+    state._txt = { shelf, key, sha:r.sha, kind:p.kind||"" };
+    idle();
+    modal(`
+      <div class="sheet-h"><div class="t">${esc(p.title||"（無題）")}</div>
+        <button class="btn ghost small" onclick="closeModal()">閉じる</button></div>
+      <div class="toolrow">
+        <button class="btn small" onclick="copyText(document.getElementById('tv-body').textContent,'全文')">全文コピー</button>
+        <button class="btn small" onclick="textEditor('${esc(p.kind||"")}', ${JSON.stringify(p.title||"")}, document.getElementById('tv-body').textContent, ${JSON.stringify(p.date||"")})">編集</button>
+        <button class="btn danger small" onclick="delText()">削除</button>
+      </div>
+      <pre class="doc" id="tv-body">${esc(p.body)}</pre>`);
+  }catch(e){ idle(); ghErr(e); }
+}
+function textEditor(kind, title, body, date){
+  modal(`
+    <div class="sheet-h"><div class="t">${esc(kind||"文書")}を書く</div>
+      <button class="btn ghost small" onclick="closeModal()">閉じる</button></div>
+    <div class="field"><label>タイトル</label><input id="te-title" value="${esc(title)}"></div>
+    ${kind==="日記"||kind==="栞火"?`<div class="field"><label>日付</label><input id="te-date" value="${esc(date||today())}" placeholder="YYYY-MM-DD"></div>`:""}
+    <div class="field"><textarea id="te-body" rows="14">${esc(body)}</textarea></div>
+    <div class="toolrow"><button class="btn primary grow" onclick="saveText()">保存する</button></div>`);
+}
+async function saveText(){
+  const t = state._txt;
+  const title = $("#te-title").value.trim() || "（無題）";
+  const dateEl = $("#te-date");
+  const date = dateEl ? (dateEl.value.trim()||today()) : today();
+  const body = $("#te-body").value;
+  busy("綴じている");
+  try{
+    const key = t.key || String(Date.now());
+    const payload = { kind:t.kind, title, date, body, updated: today() };
+    t.sha = await ghPut(itemPath(t.shelf,key), await encObj(payload), t.sha, (t.kind||"文書")+"："+title);
+    t.key = key;
+    const idx = await loadIndex();
+    idx.data[t.shelf][key] = { title, kind:t.kind, date, updated: today() };
+    await saveIndex((t.kind||"文書")+"目録："+title);
+    touch(state.roomId);
+    idle(); closeModal(); renderTab(); toast("綴じた");
+  }catch(e){ idle(); ghErr(e); }
+}
+async function delText(){
+  const t = state._txt;
+  if(!confirm("この一枚を削除する。Gitの履歴には残るが、棚からは消える。いい？")) return;
+  busy("外している");
+  try{
+    await ghDel(itemPath(t.shelf,t.key), t.sha, "削除");
+    const idx = await loadIndex();
+    delete idx.data[t.shelf][t.key];
+    await saveIndex("目録から外す");
+    idle(); closeModal(); renderTab(); toast("外した");
+  }catch(e){ idle(); ghErr(e); }
+}
+async function copyMonth(mkey){
+  busy("その月を束ねている");
+  try{
+    const idx = await loadIndex();
+    const keys = Object.entries(idx.data.work)
+      .filter(([k,v])=>String(v.date||v.updated||"").startsWith(mkey))
+      .sort((a,b)=>String(a[1].date||"").localeCompare(String(b[1].date||"")))
+      .map(([k])=>k);
+    const parts = [];
+    for(const k of keys){
+      const r = await ghGetJson(itemPath("work",k));
+      const p = await decEnv(r.data);
+      parts.push(p.body);
+    }
+    idle(); copyText(parts.join("\n\n---\n\n"), mkey.replace("-","年")+"月分");
+  }catch(e){ idle(); ghErr(e); }
+}
+
+/* ---- バイナリ（アルバム・音楽棚） ---- */
+async function uploadBin(ev, shelf){
+  const file = ev.target.files[0]; ev.target.value="";
+  if(!file) return;
+  const MB = 1024*1024;
+  if(file.size > 45*MB) return toast("45MB超は入らない。原本はiCloudへ、ここには軽い写しを。",4200);
+  const softCap = shelf==="album" ? 8*MB : 25*MB;
+  if(file.size > softCap && !confirm("大きめのファイルだ（"+(file.size/MB).toFixed(1)+"MB）。金庫が重くなるが、入れるか？")) return;
+  const caption = prompt(shelf==="album"?"キャプション（任意）":"曲名・クレジット（任意）", file.name) ;
+  if(caption===null) return;
+  busy("包んで金庫に入れている");
+  try{
+    const buf = await file.arrayBuffer();
+    const payload = { kind:"bin", name:file.name, mime:file.type||"application/octet-stream",
+      b64: abToB64(buf), caption, updated: today() };
+    const key = String(Date.now());
+    await ghPut(itemPath(shelf,key), await encObj(payload), null, (shelf==="album"?"写真":"曲")+"："+(caption||file.name));
+    const idx = await loadIndex();
+    idx.data[shelf][key] = { name:file.name, caption, mime:payload.mime, size:file.size, date:today(), updated:today() };
+    await saveIndex("目録："+(caption||file.name));
+    touch(state.roomId);
+    idle(); renderTab(); toast("入れた");
+  }catch(e){ idle(); ghErr(e); }
+}
+async function fetchBin(shelf, key){
+  const r = await ghGetJson(itemPath(shelf,key));
+  return { payload: await decEnv(r.data), sha: r.sha };
+}
+async function openBin(shelf, key){
+  busy("開いている");
+  try{
+    const { payload:p, sha } = await fetchBin(shelf,key);
+    idle();
+    $("#viewer-root").innerHTML = `
+      <div class="viewer" onclick="closeViewer()">
+        <button class="close" onclick="closeViewer()">×</button>
+        <img src="data:${esc(p.mime)};base64,${p.b64}" alt="${esc(p.caption||p.name)}">
+        <div class="cap">${esc(p.caption||p.name)}</div>
+        <div class="toolrow" onclick="event.stopPropagation()" style="margin-top:14px">
+          <button class="btn danger small" onclick="delBin('${shelf}','${esc(key)}','${sha}')">削除</button>
+        </div>
+      </div>`;
+  }catch(e){ idle(); ghErr(e); }
+}
+function closeViewer(){ $("#viewer-root").innerHTML=""; }
+async function playBin(key){
+  busy("針を落としている");
+  try{
+    const { payload:p, sha } = await fetchBin("music",key);
+    if(state.playerUrl) URL.revokeObjectURL(state.playerUrl);
+    const blob = new Blob([b64ToAb(p.b64)], { type: p.mime||"audio/mpeg" });
+    state.playerUrl = URL.createObjectURL(blob);
+    idle();
+    const slot = $("#player-slot"); if(!slot) return;
+    slot.innerHTML = `
+      <div class="player">
+        <div class="pt">♪ ${esc(p.caption||p.name)}</div>
+        <audio controls autoplay src="${state.playerUrl}"></audio>
+        <div class="toolrow" style="margin:8px 0 0">
+          <button class="btn danger small" onclick="delBin('music','${esc(key)}','${sha}')">この曲を棚から外す</button>
+        </div>
+      </div>`;
+  }catch(e){ idle(); ghErr(e); }
+}
+async function delBin(shelf, key, sha){
+  if(!confirm("棚から外す。Git履歴には残る。いい？")) return;
+  busy("外している");
+  try{
+    await ghDel(itemPath(shelf,key), sha, "削除");
+    const idx = await loadIndex();
+    delete idx.data[shelf][key];
+    await saveIndex("目録から外す");
+    idle(); closeViewer(); renderTab(); toast("外した");
+  }catch(e){ idle(); ghErr(e); }
+}
+
+/* ---------- 設定 ---------- */
+function openSettings(){
+  modal(`
+    <div class="sheet-h"><div class="t">設定</div>
+      <button class="btn ghost small" onclick="closeModal()">閉じる</button></div>
+    <div class="field"><label>この建物の名前</label><input id="st-title" value="${esc((state.meta&&state.meta.title)||"箱庭王国ハブ・新館")}"></div>
+    <div class="toolrow"><button class="btn small" onclick="saveTitle()">名前を保存</button></div>
+    <div class="rule"></div>
+    <p class="hint" style="margin-bottom:10px">接続先：${esc(state.cfg.u)} / ${esc(state.cfg.r)}（非公開）</p>
+    <div class="field"><label>合鍵の更新（年一回の差し替え用）</label><input id="st-token" type="password" placeholder="新しい github_pat_…"></div>
+    <div class="toolrow"><button class="btn small" onclick="rotateToken()">合鍵を差し替える</button></div>
+    <div class="rule"></div>
+    <div class="toolrow">
+      <button class="btn small" onclick="lockNow();closeModal()">⚿ 施錠する</button>
+      <button class="btn danger small" onclick="if(confirm('この端末の登録を消す。金庫の中身は消えない。いい？')){forgetDevice()}">この端末の登録を消す</button>
+    </div>`);
+}
+async function saveTitle(){
+  const t = $("#st-title").value.trim(); if(!t) return;
+  busy("看板を掛け替えている");
+  try{
+    state.meta.title = t;
+    const cur = await api("/contents/meta.json");
+    await ghPut("meta.json", state.meta, cur.sha, "看板："+t);
+    state.cfg.title = t; lsSet(state.cfg);
+    idle(); closeModal(); showHall(); toast("掛け替えた");
+  }catch(e){ idle(); ghErr(e); }
+}
+async function rotateToken(){
+  const t = $("#st-token").value.trim(); if(!t) return toast("新しい合鍵を入れろ");
+  busy("合鍵を検分中");
+  const old = state.token; state.token = t;
+  try{
+    await api("");
+    state.cfg.tokenWrap = await encObj({ t });
+    lsSet(state.cfg);
+    idle(); closeModal(); toast("合鍵、差し替えた");
+  }catch(e){ state.token = old; idle(); ghErr(e); }
+}
+
+/* ---------- モーダル ---------- */
+function modal(inner){
+  $("#modal-root").innerHTML = `<div class="veil" onclick="if(event.target===this)closeModal()"><div class="sheet">${inner}</div></div>`;
+}
+function closeModal(){ $("#modal-root").innerHTML=""; }
+
+boot();
+</script>
+</body>
+</html>
