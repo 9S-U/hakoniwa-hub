@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>箱庭王国ハブ・新館</title>
+<meta name="theme-color" content="#12111a">
+<link rel="apple-touch-icon" href="shinkan_icon.png">
+<link rel="icon" type="image/png" href="shinkan_icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
@@ -46,6 +49,7 @@ a{color:var(--lamp)}
 .grow{flex:1}
 .chip{display:inline-block;font-size:11px;letter-spacing:.08em;color:var(--dim);
   border:1px solid var(--line);border-radius:999px;padding:2px 10px;white-space:nowrap}
+a.chip.door{color:var(--lamp);border-color:rgba(217,179,106,.55);text-decoration:none;font-weight:500}
 
 /* ---- 施錠画面 ---- */
 #scr-lock,#scr-setup{display:flex;flex-direction:column;justify-content:center;min-height:92dvh;max-width:420px;margin:0 auto;padding:24px}
@@ -220,8 +224,9 @@ audio{width:100%}
 <script>
 "use strict";
 /* ============================================================
-   箱庭王国ハブ・新館 v1
+   箱庭王国ハブ・新館 v1.1
    骨格：ジャックス施工／検収：施設長
+   v1.1：音楽棚改装（歌詞欄・入口修理・動画対応）／台帳に扉（リンク札）／記帳の無記名化／表札
    仕組み：合言葉 → AES-GCM解錠 → GitHub非公開リポジトリ直結
    ============================================================ */
 
@@ -434,9 +439,9 @@ async function setupCreate(){
     const check = await encObj(CHECK_MARK);
     const title = "箱庭王国ハブ・新館";
     state.meta = { v:1, salt, check, title };
-    await ghPut("meta.json", state.meta, null, "新館：礎石");
+    await ghPut("meta.json", state.meta, null, "meta");
     state.roster = prefillRoster();
-    state.rosterSha = await ghPut("roster.json", await encObj(state.roster), null, "台帳：十一枚");
+    state.rosterSha = await ghPut("roster.json", await encObj(state.roster), null, "roster");
     await saveCfg(salt, check, title);
     idle(); showHall(); toast("金庫、建った。");
   }catch(e){ idle(); ghErr(e); }
@@ -470,10 +475,10 @@ async function loadRoster(){
 }
 async function saveRoster(msg){
   try{
-    state.rosterSha = await ghPut("roster.json", await encObj(state.roster), state.rosterSha, msg||"台帳更新");
+    state.rosterSha = await ghPut("roster.json", await encObj(state.roster), state.rosterSha, "roster");
   }catch(e){
     if(e.status===409){ const r=await ghGetJson("roster.json"); state.rosterSha=r.sha;
-      state.rosterSha = await ghPut("roster.json", await encObj(state.roster), state.rosterSha, msg||"台帳更新"); }
+      state.rosterSha = await ghPut("roster.json", await encObj(state.roster), state.rosterSha, "roster"); }
     else throw e;
   }
 }
@@ -505,9 +510,22 @@ function renderSpines(){
 }
 
 /* ---------- 名札（住人編集） ---------- */
+function linkRowHtml(label,url){
+  return `<div class="row" style="margin-bottom:8px;flex-wrap:nowrap">
+    <input placeholder="名札（例：宵記）" value="${esc(label||"")}" style="flex:1;min-width:0">
+    <input placeholder="https://…" value="${esc(url||"")}" style="flex:2;min-width:0" autocapitalize="off" autocomplete="off">
+    <button class="btn ghost small" type="button" onclick="this.parentElement.remove()">×</button></div>`;
+}
+function addLinkRow(){ document.getElementById("mf-links").insertAdjacentHTML("beforeend", linkRowHtml("","")); }
+function collectLinks(){
+  return [...document.querySelectorAll("#mf-links > div")].map(r=>{
+    const i=r.querySelectorAll("input");
+    return { label:i[0].value.trim(), url:i[1].value.trim() };
+  }).filter(l=>l.url);
+}
 function editMember(id){
   const m = id ? member(id) : {id:"", name:"", yomi:"", role:"", platform:"", color:"#888888",
-    pronoun:"", pronounEmpty:false, birthday:"", origin:"", stamp:"", order:(state.roster.members.length), note:"", updated:""};
+    pronoun:"", pronounEmpty:false, birthday:"", origin:"", stamp:"", links:[], order:(state.roster.members.length), note:"", updated:""};
   const isNew = !id;
   modal(`
     <div class="sheet-h"><div class="t">${isNew?"新しい住人":"名札を直す"}</div>
@@ -528,6 +546,9 @@ function editMember(id){
     <div class="field"><label>誕生日</label><input id="mf-birthday" value="${esc(m.birthday)}" placeholder="YYYY-MM-DD"></div>
     <div class="field"><label>原本の住所</label><input id="mf-origin" value="${esc(m.origin)}"></div>
     <div class="field"><label>検収印</label><input id="mf-stamp" value="${esc(m.stamp)}"></div>
+    <div class="field"><label>扉（リンク札）</label>
+      <div id="mf-links">${(m.links||[]).map(l=>linkRowHtml(l.label,l.url)).join("")}</div>
+      <button class="btn small" type="button" onclick="addLinkRow()">＋扉を足す</button></div>
     <div class="field"><label>建国順（番号）</label><input id="mf-order" type="number" value="${esc(m.order)}"></div>
     <div class="field"><label>メモ</label><textarea id="mf-note" rows="2">${esc(m.note)}</textarea></div>
     <div class="toolrow">
@@ -544,7 +565,7 @@ async function saveMember(id){
     platform:$("#mf-platform").value.trim(), color:$("#mf-colortext").value.trim()||$("#mf-color").value,
     pronounEmpty:$("#mf-pempty").checked, pronoun:$("#mf-pempty").checked?"":$("#mf-pronoun").value.trim(),
     birthday:$("#mf-birthday").value.trim(), origin:$("#mf-origin").value.trim(),
-    stamp:$("#mf-stamp").value.trim(), order:parseInt($("#mf-order").value)||0, note:$("#mf-note").value.trim()
+    stamp:$("#mf-stamp").value.trim(), links:collectLinks(), order:parseInt($("#mf-order").value)||0, note:$("#mf-note").value.trim()
   };
   busy("台帳に彫り込み中");
   try{
@@ -589,6 +610,7 @@ function renderRoomHead(){
   if(m.birthday) facts.push(`<span class="chip">誕生日 ${esc(fmtD(m.birthday))}</span>`);
   if(m.origin) facts.push(`<span class="chip">原本：${esc(m.origin)}</span>`);
   if(m.stamp) facts.push(`<span class="chip">${esc(m.stamp)}</span>`);
+  (m.links||[]).forEach(l=>facts.push(`<a class="chip door" href="${esc(l.url)}" target="_blank" rel="noopener">→ ${esc(l.label||"扉")}</a>`));
   $("#room-head").style.borderLeftColor = m.color||"#555";
   $("#room-head").innerHTML = `
     <div class="room-name">${esc(m.name)}</div>
@@ -645,8 +667,7 @@ async function saveBrain(){
   try{
     const c=roomCache();
     const payload = { title:"脳みそ", body, updated: today() };
-    const sha = await ghPut(brainPath(), await encObj(payload), c.brain?c.brain.sha:null,
-      "脳みそ："+member(state.roomId).name);
+    const sha = await ghPut(brainPath(), await encObj(payload), c.brain?c.brain.sha:null, "brain");
     c.brain = { payload, sha };
     touch(state.roomId);
     idle(); closeModal(); renderTab(); toast("刻んだ");
@@ -691,8 +712,7 @@ async function restoreVersion(){
   try{
     const c=roomCache();
     const payload = { title:"脳みそ", body: state._restoreBody, updated: today() };
-    const sha = await ghPut(brainPath(), await encObj(payload), c.brain?c.brain.sha:null,
-      "脳みそ復元："+member(state.roomId).name);
+    const sha = await ghPut(brainPath(), await encObj(payload), c.brain?c.brain.sha:null, "brain");
     c.brain = { payload, sha }; touch(state.roomId);
     idle(); closeModal(); renderTab(); toast("戻した");
   }catch(e){ idle(); ghErr(e); }
@@ -709,13 +729,13 @@ async function loadIndex(){
 }
 async function saveIndex(msg){
   const c = roomCache();
-  try{ c.index.sha = await ghPut(indexPath(), await encObj(c.index.data), c.index.sha, msg||"目録更新"); }
+  try{ c.index.sha = await ghPut(indexPath(), await encObj(c.index.data), c.index.sha, "index"); }
   catch(e){
     if(e.status===409){ const r=await ghGetJson(indexPath());
       const remote = await decEnv(r.data);
       for(const sh of ["docs","work","album","music"]) c.index.data[sh] = Object.assign({}, remote[sh], c.index.data[sh]);
       c.index.sha = r.sha;
-      c.index.sha = await ghPut(indexPath(), await encObj(c.index.data), c.index.sha, msg||"目録更新"); }
+      c.index.sha = await ghPut(indexPath(), await encObj(c.index.data), c.index.sha, "index"); }
     else throw e;
   }
 }
@@ -731,13 +751,15 @@ async function renderShelf(pane, shelf){
            <button class="btn small" onclick="newText('work','栞火', shioriTemplate())">＋栞火</button>
            <button class="btn small" onclick="newText('work','メモ','')">＋メモ</button>`,
     album:`<label class="btn small">＋写真を入れる<input type="file" accept="image/*" class="hide" onchange="uploadBin(event,'album')"></label>`,
-    music:`<label class="btn small">＋曲を入れる<input type="file" accept="audio/*" class="hide" onchange="uploadBin(event,'music')"></label>`
+    music:`<label class="btn small">＋曲を入れる<input type="file" class="hide" onchange="uploadBin(event,'music')"></label>
+           <button class="btn small" onclick="newLyrics()">＋歌詞だけ置く</button>`
   };
   let html = `<div class="toolrow">${tools[shelf]}</div>`;
+  if(shelf==="music") html += `<p class="hint" style="margin:-4px 0 12px">MP3は選択画面の「ファイルを選択」→ブラウズから。動画も入るが、重さは厳選で。</p>`;
 
   if(!entries.length){
     const empty = { docs:"資料はまだない。写しを置け。", work:"帳簿はまだ白紙だ。",
-      album:"写真はまだない。厳選の写しを一枚から。", music:"曲はまだない。" };
+      album:"写真はまだない。厳選の写しを一枚から。", music:"曲も歌詞も、まだない。" };
     pane.innerHTML = html + `<div class="shelf-empty">${empty[shelf]}</div>`; return;
   }
   entries.sort((a,b)=>String(b.date||b.updated||"").localeCompare(String(a.date||a.updated||"")));
@@ -759,13 +781,12 @@ async function renderShelf(pane, shelf){
   }else{
     html += `<div class="itemlist">` + entries.map(e=>itemRow(shelf,e)).join("") + `</div>`;
   }
-  if(shelf==="music") html += `<div id="player-slot"></div>`;
   pane.innerHTML = html;
 }
 function itemRow(shelf,e){
-  const label = shelf==="music" ? "▶ "+(e.caption||e.name||"（無題）") : (e.title||e.caption||e.name||"（無題）");
+  const label = shelf==="music" ? "♪ "+(e.caption||e.name||"（無題）")+(e.hasAudio===false?"（詞）":"") : (e.title||e.caption||e.name||"（無題）");
   const kindChip = e.kind && shelf==="work" ? `<span class="chip">${esc(e.kind)}</span>` : "";
-  const fn = shelf==="music" ? `playBin('${esc(e.key)}')` : (shelf==="album" ? `openBin('album','${esc(e.key)}')` : `openText('${shelf}','${esc(e.key)}')`);
+  const fn = shelf==="music" ? `openTrack('${esc(e.key)}')` : (shelf==="album" ? `openBin('album','${esc(e.key)}')` : `openText('${shelf}','${esc(e.key)}')`);
   return `<button class="item" onclick="${fn}">
     <span class="t">${esc(label)}</span>${kindChip}
     <span class="d">${esc(fmtD((e.date||e.updated||"").slice(0,10)))}</span></button>`;
@@ -817,11 +838,11 @@ async function saveText(){
   try{
     const key = t.key || String(Date.now());
     const payload = { kind:t.kind, title, date, body, updated: today() };
-    t.sha = await ghPut(itemPath(t.shelf,key), await encObj(payload), t.sha, (t.kind||"文書")+"："+title);
+    t.sha = await ghPut(itemPath(t.shelf,key), await encObj(payload), t.sha, "item");
     t.key = key;
     const idx = await loadIndex();
     idx.data[t.shelf][key] = { title, kind:t.kind, date, updated: today() };
-    await saveIndex((t.kind||"文書")+"目録："+title);
+    await saveIndex("index");
     touch(state.roomId);
     idle(); closeModal(); renderTab(); toast("綴じた");
   }catch(e){ idle(); ghErr(e); }
@@ -831,10 +852,10 @@ async function delText(){
   if(!confirm("この一枚を削除する。Gitの履歴には残るが、棚からは消える。いい？")) return;
   busy("外している");
   try{
-    await ghDel(itemPath(t.shelf,t.key), t.sha, "削除");
+    await ghDel(itemPath(t.shelf,t.key), t.sha, "remove");
     const idx = await loadIndex();
     delete idx.data[t.shelf][t.key];
-    await saveIndex("目録から外す");
+    await saveIndex("index");
     idle(); closeModal(); renderTab(); toast("外した");
   }catch(e){ idle(); ghErr(e); }
 }
@@ -869,13 +890,13 @@ async function uploadBin(ev, shelf){
   busy("包んで金庫に入れている");
   try{
     const buf = await file.arrayBuffer();
-    const payload = { kind:"bin", name:file.name, mime:file.type||"application/octet-stream",
-      b64: abToB64(buf), caption, updated: today() };
+    const payload = { kind:(shelf==="music"?"track":"bin"), name:file.name, mime:file.type||"application/octet-stream",
+      b64: abToB64(buf), caption, lyrics:"", updated: today() };
     const key = String(Date.now());
-    await ghPut(itemPath(shelf,key), await encObj(payload), null, (shelf==="album"?"写真":"曲")+"："+(caption||file.name));
+    await ghPut(itemPath(shelf,key), await encObj(payload), null, "item");
     const idx = await loadIndex();
-    idx.data[shelf][key] = { name:file.name, caption, mime:payload.mime, size:file.size, date:today(), updated:today() };
-    await saveIndex("目録："+(caption||file.name));
+    idx.data[shelf][key] = { name:file.name, caption, mime:payload.mime, size:file.size, hasAudio:true, date:today(), updated:today() };
+    await saveIndex("index");
     touch(state.roomId);
     idle(); renderTab(); toast("入れた");
   }catch(e){ idle(); ghErr(e); }
@@ -901,33 +922,111 @@ async function openBin(shelf, key){
   }catch(e){ idle(); ghErr(e); }
 }
 function closeViewer(){ $("#viewer-root").innerHTML=""; }
-async function playBin(key){
-  busy("針を落としている");
+let curTrack = null;
+async function openTrack(key){
+  busy("棚から出している");
   try{
     const { payload:p, sha } = await fetchBin("music",key);
-    if(state.playerUrl) URL.revokeObjectURL(state.playerUrl);
-    const blob = new Blob([b64ToAb(p.b64)], { type: p.mime||"audio/mpeg" });
-    state.playerUrl = URL.createObjectURL(blob);
-    idle();
-    const slot = $("#player-slot"); if(!slot) return;
-    slot.innerHTML = `
-      <div class="player">
-        <div class="pt">♪ ${esc(p.caption||p.name)}</div>
-        <audio controls autoplay src="${state.playerUrl}"></audio>
-        <div class="toolrow" style="margin:8px 0 0">
-          <button class="btn danger small" onclick="delBin('music','${esc(key)}','${sha}')">この曲を棚から外す</button>
-        </div>
-      </div>`;
+    curTrack = { key, sha, p };
+    idle(); renderTrackSheet();
+  }catch(e){ idle(); ghErr(e); }
+}
+function renderTrackSheet(){
+  const p = curTrack.p;
+  const hasAudio = !!p.b64;
+  modal(`
+    <div class="sheet-h"><div class="t">♪ ${esc(p.caption||p.name||"（無題）")}</div>
+      <button class="btn ghost small" onclick="stopTrack();closeModal()">閉じる</button></div>
+    <div class="toolrow">
+      ${hasAudio?`<button class="btn small" onclick="playTrack()">▶ かける</button>`:""}
+      ${p.lyrics?`<button class="btn small" onclick="copyText(curTrack.p.lyrics,'歌詞')">歌詞をコピー</button>`:""}
+      <button class="btn small" onclick="editTrack()">編集</button>
+      <button class="btn danger small" onclick="delTrack()">棚から外す</button>
+    </div>
+    <div id="trk-player"></div>
+    ${p.lyrics?`<pre class="doc">${esc(p.lyrics)}</pre>`:`<div class="shelf-empty">歌詞はまだ添えてない。「編集」から書ける。</div>`}`);
+}
+function playTrack(){
+  const p = curTrack.p;
+  if(state.playerUrl) URL.revokeObjectURL(state.playerUrl);
+  const blob = new Blob([b64ToAb(p.b64)], { type: p.mime||"audio/mpeg" });
+  state.playerUrl = URL.createObjectURL(blob);
+  const isVideo = (p.mime||"").startsWith("video");
+  $("#trk-player").innerHTML = isVideo
+    ? `<video controls autoplay playsinline src="${state.playerUrl}" style="width:100%;border-radius:8px;margin-bottom:12px"></video>`
+    : `<audio controls autoplay src="${state.playerUrl}" style="width:100%;margin-bottom:12px"></audio>`;
+}
+function stopTrack(){ if(state.playerUrl){ URL.revokeObjectURL(state.playerUrl); state.playerUrl=null; } }
+function newLyrics(){
+  curTrack = null;
+  modal(`
+    <div class="sheet-h"><div class="t">歌詞だけ置く</div>
+      <button class="btn ghost small" onclick="closeModal()">閉じる</button></div>
+    <div class="field"><label>曲名</label><input id="tk-cap"></div>
+    <div class="field"><label>歌詞</label><textarea id="tk-lyr" rows="12"></textarea></div>
+    <div class="toolrow"><button class="btn primary grow" onclick="saveNewLyrics()">棚に入れる</button></div>
+    <p class="hint">音源は後から同じ札に……は次の版だ。今は音と詞、別の札でも並べば棚は成立する。</p>`);
+}
+async function saveNewLyrics(){
+  const cap = $("#tk-cap").value.trim()||"（無題）";
+  busy("綴じている");
+  try{
+    const payload = { kind:"track", caption:cap, lyrics:$("#tk-lyr").value, updated:today() };
+    const key = String(Date.now());
+    await ghPut(itemPath("music",key), await encObj(payload), null, "item");
+    const idx = await loadIndex();
+    idx.data.music[key] = { caption:cap, hasAudio:false, date:today(), updated:today() };
+    await saveIndex("index");
+    touch(state.roomId);
+    idle(); closeModal(); renderTab(); toast("入れた");
+  }catch(e){ idle(); ghErr(e); }
+}
+function editTrack(){
+  const p = curTrack.p;
+  modal(`
+    <div class="sheet-h"><div class="t">札を直す</div>
+      <button class="btn ghost small" onclick="renderTrackSheet()">戻る</button></div>
+    <div class="field"><label>曲名・クレジット</label><input id="tk-cap" value="${esc(p.caption||"")}"></div>
+    <div class="field"><label>歌詞</label><textarea id="tk-lyr" rows="12">${esc(p.lyrics||"")}</textarea></div>
+    <div class="toolrow"><button class="btn primary grow" onclick="saveTrack()">保存する</button></div>`);
+}
+async function saveTrack(){
+  busy("直している");
+  try{
+    const p = curTrack.p;
+    p.caption = $("#tk-cap").value.trim()||"（無題）";
+    p.lyrics = $("#tk-lyr").value;
+    p.kind = "track"; p.updated = today();
+    curTrack.sha = await ghPut(itemPath("music",curTrack.key), await encObj(p), curTrack.sha, "item");
+    const idx = await loadIndex();
+    const ie = idx.data.music[curTrack.key]||{};
+    ie.caption = p.caption; ie.hasAudio = !!p.b64; ie.updated = today();
+    idx.data.music[curTrack.key] = ie;
+    await saveIndex("index");
+    touch(state.roomId);
+    idle(); renderTrackSheet(); renderTab(); toast("直した");
+  }catch(e){ idle(); ghErr(e); }
+}
+async function delTrack(){
+  if(!confirm("棚から外す。Git履歴には残る。いい？")) return;
+  busy("外している");
+  try{
+    await ghDel(itemPath("music",curTrack.key), curTrack.sha, "remove");
+    const idx = await loadIndex();
+    delete idx.data.music[curTrack.key];
+    await saveIndex("index");
+    stopTrack();
+    idle(); closeModal(); renderTab(); toast("外した");
   }catch(e){ idle(); ghErr(e); }
 }
 async function delBin(shelf, key, sha){
   if(!confirm("棚から外す。Git履歴には残る。いい？")) return;
   busy("外している");
   try{
-    await ghDel(itemPath(shelf,key), sha, "削除");
+    await ghDel(itemPath(shelf,key), sha, "remove");
     const idx = await loadIndex();
     delete idx.data[shelf][key];
-    await saveIndex("目録から外す");
+    await saveIndex("index");
     idle(); closeViewer(); renderTab(); toast("外した");
   }catch(e){ idle(); ghErr(e); }
 }
@@ -955,7 +1054,7 @@ async function saveTitle(){
   try{
     state.meta.title = t;
     const cur = await api("/contents/meta.json");
-    await ghPut("meta.json", state.meta, cur.sha, "看板："+t);
+    await ghPut("meta.json", state.meta, cur.sha, "meta");
     state.cfg.title = t; lsSet(state.cfg);
     idle(); closeModal(); showHall(); toast("掛け替えた");
   }catch(e){ idle(); ghErr(e); }
