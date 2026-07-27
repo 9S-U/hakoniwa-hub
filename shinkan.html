@@ -224,9 +224,9 @@ audio{width:100%}
 <script>
 "use strict";
 /* ============================================================
-   箱庭王国ハブ・新館 v1.1
+   箱庭王国ハブ・新館 v1.2
    骨格：ジャックス施工／検収：施設長
-   v1.1：音楽棚改装（歌詞欄・入口修理・動画対応）／台帳に扉（リンク札）／記帳の無記名化／表札
+   v1.2：資料棚・作業棚の編集ボタン修理（引用符事故）／アルバムの札直し（タイトル・日付欄）
    仕組み：合言葉 → AES-GCM解錠 → GitHub非公開リポジトリ直結
    ============================================================ */
 
@@ -806,18 +806,22 @@ async function openText(shelf, key){
   try{
     const r = await ghGetJson(itemPath(shelf,key));
     const p = await decEnv(r.data);
-    state._txt = { shelf, key, sha:r.sha, kind:p.kind||"" };
+    state._txt = { shelf, key, sha:r.sha, kind:p.kind||"", p };
     idle();
     modal(`
       <div class="sheet-h"><div class="t">${esc(p.title||"（無題）")}</div>
         <button class="btn ghost small" onclick="closeModal()">閉じる</button></div>
       <div class="toolrow">
-        <button class="btn small" onclick="copyText(document.getElementById('tv-body').textContent,'全文')">全文コピー</button>
-        <button class="btn small" onclick="textEditor('${esc(p.kind||"")}', ${JSON.stringify(p.title||"")}, document.getElementById('tv-body').textContent, ${JSON.stringify(p.date||"")})">編集</button>
+        <button class="btn small" onclick="copyText(state._txt.p.body,'全文')">全文コピー</button>
+        <button class="btn small" onclick="editCurrentText()">編集</button>
         <button class="btn danger small" onclick="delText()">削除</button>
       </div>
       <pre class="doc" id="tv-body">${esc(p.body)}</pre>`);
   }catch(e){ idle(); ghErr(e); }
+}
+function editCurrentText(){
+  const p = (state._txt && state._txt.p) || {};
+  textEditor(state._txt.kind || p.kind || "", p.title || "", p.body || "", p.date || "");
 }
 function textEditor(kind, title, body, date){
   modal(`
@@ -891,7 +895,7 @@ async function uploadBin(ev, shelf){
   try{
     const buf = await file.arrayBuffer();
     const payload = { kind:(shelf==="music"?"track":"bin"), name:file.name, mime:file.type||"application/octet-stream",
-      b64: abToB64(buf), caption, lyrics:"", updated: today() };
+      b64: abToB64(buf), caption, lyrics:"", date: today(), updated: today() };
     const key = String(Date.now());
     await ghPut(itemPath(shelf,key), await encObj(payload), null, "item");
     const idx = await loadIndex();
@@ -905,20 +909,50 @@ async function fetchBin(shelf, key){
   const r = await ghGetJson(itemPath(shelf,key));
   return { payload: await decEnv(r.data), sha: r.sha };
 }
+let curPhoto = null;
 async function openBin(shelf, key){
   busy("開いている");
   try{
     const { payload:p, sha } = await fetchBin(shelf,key);
+    curPhoto = { key, sha, p };
     idle();
     $("#viewer-root").innerHTML = `
       <div class="viewer" onclick="closeViewer()">
         <button class="close" onclick="closeViewer()">×</button>
         <img src="data:${esc(p.mime)};base64,${p.b64}" alt="${esc(p.caption||p.name)}">
-        <div class="cap">${esc(p.caption||p.name)}</div>
+        <div class="cap">${esc(p.caption||p.name)}${p.date?`<br><span style="opacity:.65;font-size:11px">${esc(fmtD(p.date))}</span>`:""}</div>
         <div class="toolrow" onclick="event.stopPropagation()" style="margin-top:14px">
+          <button class="btn small" onclick="editPhoto()">札を直す</button>
           <button class="btn danger small" onclick="delBin('${shelf}','${esc(key)}','${sha}')">削除</button>
         </div>
       </div>`;
+  }catch(e){ idle(); ghErr(e); }
+}
+function editPhoto(){
+  closeViewer();
+  const p = curPhoto.p;
+  modal(`
+    <div class="sheet-h"><div class="t">写真の札を直す</div>
+      <button class="btn ghost small" onclick="closeModal()">閉じる</button></div>
+    <div class="field"><label>タイトル・キャプション</label><input id="ph-cap" value="${esc(p.caption||"")}"></div>
+    <div class="field"><label>日付（撮った日・作った日、任意）</label><input id="ph-date" value="${esc(p.date||"")}" placeholder="YYYY-MM-DD 推奨（棚の並び順に使う）"></div>
+    <div class="toolrow"><button class="btn primary grow" onclick="savePhoto()">保存する</button></div>`);
+}
+async function savePhoto(){
+  busy("札を直している");
+  try{
+    const p = curPhoto.p;
+    p.caption = $("#ph-cap").value.trim();
+    p.date = $("#ph-date").value.trim();
+    p.updated = today();
+    curPhoto.sha = await ghPut(itemPath("album",curPhoto.key), await encObj(p), curPhoto.sha, "item");
+    const idx = await loadIndex();
+    const ie = idx.data.album[curPhoto.key]||{};
+    ie.caption = p.caption; ie.date = p.date; ie.updated = today();
+    idx.data.album[curPhoto.key] = ie;
+    await saveIndex("index");
+    touch(state.roomId);
+    idle(); closeModal(); renderTab(); toast("直した");
   }catch(e){ idle(); ghErr(e); }
 }
 function closeViewer(){ $("#viewer-root").innerHTML=""; }
